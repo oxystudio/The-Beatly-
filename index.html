@@ -33,7 +33,8 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 .pill:active{transform:translateY(2px);box-shadow:0 2px 5px rgba(0,0,0,.3)}.pill.sm{height:36px;padding:0 16px;font-size:13px;min-width:0}
 .k{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;letter-spacing:1px}
 .pl{max-width:1000px;margin:0 auto;padding-top:3vh;height:100%;display:flex;flex-direction:column;align-items:center}.bot{align-self:stretch;margin-top:auto;padding-bottom:1vh}
-.stage{position:relative;--S:min(80vw,46dvh,520px);width:var(--S);height:var(--S);margin:0 14vw 0 0}
+.stagew{flex:1;min-height:0;align-self:stretch;container-type:size;display:flex;justify-content:center;align-items:center;padding-right:10vw;margin-bottom:2vh}
+.stage{position:relative;width:min(76vw,44dvh,520px);height:min(76vw,44dvh,520px);width:min(96cqw,98cqh);height:min(96cqw,98cqh)}
 .stage .arm{position:absolute;left:68%;top:-4%;width:28%;height:84%;transform-origin:80% 6.67%;transform:rotate(-24deg);transition:transform 1s cubic-bezier(.5,0,.2,1);pointer-events:none;filter:drop-shadow(4px 8px 6px rgba(0,0,0,.35))}
 .stage .arm.on{transform:rotate(1deg)}
 .disc{border-radius:50%;aspect-ratio:1;position:relative;background:radial-gradient(circle,transparent 0 33%,#000 34% 36%,transparent 37%),repeating-radial-gradient(circle,#0b0b0b 0 2px,#1a1a1a 3px 4px);box-shadow:0 14px 28px rgba(0,0,0,.4);animation:sp 5s linear infinite paused;display:grid;place-items:center}
@@ -71,7 +72,7 @@ figcaption{font-size:13px;font-weight:700;margin-top:8px}figcaption small{displa
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:20;opacity:0;transition:.3s;pointer-events:none}#toast.s{opacity:1}
 .av{width:84px;height:84px;border-radius:50%;background:#222 center/cover;color:#fff;display:grid;place-items:center;font-size:34px;font-weight:800;cursor:pointer}
 .empty{opacity:.7;text-align:center;padding:40px 10px}
-@media(min-width:900px){#view{padding-left:40px;padding-right:40px}.stage{margin-right:8vw}}
+@media(min-width:900px){#view{padding-left:40px;padding-right:40px}.stagew{padding-right:5vw}}
 </style></head>
 <body>
 <div id="view"></div>
@@ -118,7 +119,7 @@ const B=cloud||local;
 let U,L,tab='player',sub='albums',openA=null,q=[],qi=-1,favOnly=false,term='',last=0,saveT;
 const cur=()=>q[qi];
 const persist=()=>{clearTimeout(saveT);saveT=setTimeout(()=>B.save(U,L).catch(()=>toast('Sync failed')),500)};
-function theme(){const s=cur(),c=L.p.auto&&s?.color?s.color:L.p.color;document.documentElement.style.setProperty('--c',c);let t='#2a2a2a';if(c[0]=='#'){const n=parseInt(c.slice(1),16),l=(.299*(n>>16)+.587*(n>>8&255)+.114*(n&255));if(l<110)t='#f5f5f5'}document.documentElement.style.setProperty('--t',t);document.querySelector('meta[name=theme-color]').content=c}
+function theme(){const s=cur(),c=L.p.auto&&s?.color?s.color:L.p.color,x=document.createElement('canvas').getContext('2d');x.fillStyle='#a9d9b5';x.fillStyle=c;const hx=x.fillStyle,n=parseInt(hx.slice(1),16),l=.299*(n>>16)+.587*(n>>8&255)+.114*(n&255),R=document.documentElement;R.style.setProperty('--c',hx);R.style.setProperty('--t',l<110?'#f5f5f5':'#2a2a2a');R.style.background=hx;document.querySelectorAll('meta[name=theme-color]').forEach(m=>m.remove());document.head.append(Object.assign(document.createElement('meta'),{name:'theme-color',content:hx}))}
 /* ---------- id3 + images ---------- */
 const txt=d=>{const e=d[0];return new TextDecoder(e==1?'utf-16':e==3?'utf-8':'iso-8859-1').decode(d.slice(1)).replace(/\0/g,'').trim()};
 async function id3(f){const r={};try{const b=new Uint8Array(await f.slice(0,4e6).arrayBuffer());if(String.fromCharCode(...b.slice(0,3))!='ID3')return r;const v=b[3],end=Math.min(10+((b[6]<<21)|(b[7]<<14)|(b[8]<<7)|b[9]),b.length);let p=10;
@@ -126,7 +127,7 @@ while(p+10<end){const id=String.fromCharCode(...b.slice(p,p+4)),n=v==4?((b[p+4]<
 if(id=='TIT2')r.title=txt(d);else if(id=='TPE1')r.artist=txt(d);else if(id=='TALB')r.album=txt(d);else if(id=='APIC'&&!r.pic){let i=1;while(d[i])i++;i+=2;if(d[0]==1||d[0]==2){while(!(d[i]==0&&d[i+1]==0)&&i<d.length)i+=2;i+=2}else{while(d[i])i++;i++}r.pic=new Blob([d.slice(i)])}}}catch{}return r}
 const hue=(r,g,b)=>{const m=Math.max(r,g,b),n=Math.min(r,g,b),d=m-n;if(!d)return 0;const x=m==r?((g-b)/d)%6:m==g?(b-r)/d+2:(r-g)/d+4;return(x*60+360)%360};
 async function img(blob){try{const b=await createImageBitmap(blob),s=Math.min(b.width,b.height),c=document.createElement('canvas');c.width=c.height=320;const x=c.getContext('2d');x.drawImage(b,(b.width-s)/2,(b.height-s)/2,s,s,0,0,320,320);const d=x.getImageData(0,0,320,320).data;let R=0,G=0,Bl=0,W=0,S=0,n=0;for(let i=0;i<d.length;i+=4*211){const sat=Math.max(d[i],d[i+1],d[i+2])-Math.min(d[i],d[i+1],d[i+2]),w=sat+8;R+=d[i]*w;G+=d[i+1]*w;Bl+=d[i+2]*w;W+=w;S+=sat;n++}
-const col=S/n<22?'hsl(0 0% 80%)':`hsl(${Math.round(hue(R/W,G/W,Bl/W))} 72% 58%)`;return{url:c.toDataURL('image/jpeg',.82),col}}catch{return{}}}
+const col=S/n<22?'hsl(0,0%,80%)':`hsl(${Math.round(hue(R/W,G/W,Bl/W))},72%,58%)`;return{url:c.toDataURL('image/jpeg',.82),col}}catch{return{}}}
 const dur=f=>new Promise(r=>{const x=new Audio(),u=URL.createObjectURL(f);x.preload='metadata';x.onloadedmetadata=()=>{r(x.duration||0);URL.revokeObjectURL(u)};x.onerror=()=>r(0);x.src=u});
 const pick=(acc,multi)=>new Promise(r=>{const i=h('input',{type:'file',accept:acc,style:'position:fixed;left:-9999px;opacity:0',onchange:()=>{r([...i.files]);setTimeout(()=>i.remove(),60000)}});if(multi)i.multiple=true;document.body.append(i);i.click()});
 /* ---------- audio engine ---------- */
@@ -161,7 +162,7 @@ function Player(){const s=cur(),al=L.albums.find(x=>x.id==s?.album);
 const arm=h('div',{class:'arm',id:'arm'});arm.innerHTML='<svg viewBox="0 0 100 300" width="100%" height="100%"><circle cx="80" cy="20" r="14" fill="#111"/><circle cx="80" cy="20" r="26" fill="none" stroke="#0002"/><path d="M80 20 36 236" stroke="#bbb" stroke-width="6" stroke-linecap="round"/><path d="M80 20 36 236" stroke="#eee" stroke-width="2" stroke-linecap="round"/><g transform="rotate(12 34 250)"><rect x="18" y="232" width="32" height="46" rx="5" fill="#161616"/></g><path id="grab" d="M80 20 36 236" stroke="transparent" stroke-width="46" stroke-linecap="round" pointer-events="stroke" style="cursor:grab;touch-action:none"/></svg>';armDrag(arm);
 const d=disc(s);d.id='bd';d.classList.toggle('on',!a.paused);arm.classList.toggle('on',!a.paused);
 const sk=h('input',{type:'range',id:'sk',min:0,max:a.duration||0,step:.1,value:a.currentTime||0,oninput:()=>{sk._d=1;$('#t1').textContent=fmt(sk.value)},onchange:()=>{a.currentTime=sk.value;sk._d=0}});
-V.append(h('div',{class:'pl'},h('div',{class:'stage'},d,arm),h('div',{class:'bot'},
+V.append(h('div',{class:'pl'},h('div',{class:'stagew'},h('div',{class:'stage'},d,arm)),h('div',{class:'bot'},
 h('div',{class:'info'},h('h1',{},s?s.title:'No record'),h('p',{},s?s.artist+(al?' · '+al.name:''):'Open the Library and add music')),
 h('div',{class:'row'},h('span',{id:'t1'},fmt(a.currentTime)),sk,h('span',{id:'t2'},fmt(a.duration))),
 h('div',{class:'ctl'},h('button',{class:'pill',onclick:toggle},h('span',{id:'pb'},a.paused?'PLAY':'PAUSE')),h('button',{class:'pill',onclick:prev},ic('M6 5h2v14H6zM20 5v14L9 12z')),h('button',{class:'pill',onclick:next},ic('M16 5h2v14h-2zM4 5v14l11-7z'))))))}
