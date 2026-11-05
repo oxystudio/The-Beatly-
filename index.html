@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="The Beatly"><meta name="theme-color" content="#a9d9b5">
+<meta name="apple-mobile-web-app-title" content="The Beatly"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#a9d9b5">
 <title>The Beatly</title>
 <!--
 SYNC SETUP (optional, free): create a project at supabase.com, then in SQL Editor run:
@@ -190,7 +190,7 @@ V.append(h('div',{style:'max-width:520px;margin:0 auto;padding-top:20px'},h('div
 h('div',{style:'flex:1'},h('input',{class:'in',value:p.name,onchange:e=>{p.name=e.target.value;persist()}}),h('small',{},U.email+(B.name=='local'?' · local mode (this device only)':' · synced')))),
 h('div',{class:'card'},h('label',{},'Songs',h('b',{},L.songs.length)),h('label',{},'Albums',h('b',{},L.albums.length)),h('label',{},'Plays',h('b',{},tot)),h('label',{},'Listening time',h('b',{},Math.round((p.secs||0)/60)+' min'))),
 h('div',{class:'card'},sw('crackle','Vinyl crackle'),sw('auto','Match color to cover'),h('label',{},'Custom color',h('input',{type:'color',value:p.color,onchange:e=>{p.color=e.target.value;persist();theme()}}))),
-h('button',{class:'pill',style:'width:100%',onclick:async()=>{a.pause();q=[];qi=-1;await B.out();U=L=null;$('#nav').hidden=true;document.documentElement.style.setProperty('--c','#a9d9b5');auth()}},'Sign out')))}
+('standalone' in navigator&&!navigator.standalone)?h('div',{class:'card'},'Tip: to remove the browser bar completely, tap Share → Add to Home Screen, then open The Beatly from its icon.'):null,h('button',{class:'pill',style:'width:100%',onclick:async()=>{a.pause();q=[];qi=-1;await B.out();U=L=null;$('#nav').hidden=true;document.documentElement.style.setProperty('--c','#a9d9b5');auth()}},'Sign out')))}
 /* ---------- auth + boot ---------- */
 function auth(){V.innerHTML='';let up=false;const draw=()=>{V.innerHTML='';const n=h('input',{class:'in',placeholder:'Your name',hidden:up?null:''}),e=h('input',{class:'in',type:'email',placeholder:'Email',autocomplete:'email'}),p=h('input',{class:'in',type:'password',placeholder:'Password (min 6)',autocomplete:up?'new-password':'current-password'});
 const go2=async()=>{try{if(p.value.length<6)throw Error('Password must be at least 6 characters');U=await(up?B.up:B.in)(e.value.trim().toLowerCase(),p.value);await enter(up&&n.value.trim())}catch(x){toast(x.message||'Error')}};
