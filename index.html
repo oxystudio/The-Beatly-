@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Beatly — Виниловый Плеер и Фонотека</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --player-bg: #F59E0B;
+            --player-text: #1E1B18;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #0e0e11;
+            color: #f3f4f6;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Tactile Hardware Pill Buttons (Exact match to Image 3) */
+        .hw-pill-btn {
+            width: 78px;
+            height: 36px;
+            border-radius: 9999px;
+            background: linear-gradient(180deg, #323236 0%, #232326 100%);
+            border: 2px solid #161618;
+            box-shadow: 
+                0 8px 16px rgba(0, 0, 0, 0.35),
+                0 2px 4px rgba(0, 0, 0, 0.25),
+                inset 0 1px 1px rgba(255, 255, 255, 0.14),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.5);
+            transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.12s ease, background 0.15s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .hw-pill-btn:hover {
+            background: linear-gradient(180deg, #3a3a3f 0%, #27272a 100%);
+        }
+
+        .hw-pill-btn:active, .hw-pill-btn.active-pressed {
+            transform: translateY(2px) scale(0.97);
+            background: linear-gradient(180deg, #1f1f22 0%, #29292d 100%);
+            box-shadow: 
+                0 3px 7px rgba(0, 0, 0, 0.3),
+                inset 0 2px 5px rgba(0, 0, 0, 0.65),
+                inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+
+        /* Realistic Vinyl Record Grooves & Sheen */
+        .vinyl-disc {
+            background: 
+                radial-gradient(circle at center, 
+                    transparent 0%, 
+                    transparent 33%, 
+                    #0b0b0c 33.5%,
+                    #141416 35%,
+                    #09090b 36%,
+                    #18181b 40%,
+                    #0a0a0c 41%,
+                    #161618 46%,
+                    #09090b 48%,
+                    #18181b 53%,
+                    #0c0c0e 55%,
+                    #17171a 61%,
+                    #09090b 63%,
+                    #161619 69%,
+                    #0b0b0d 71%,
+                    #18181c 77%,
+                    #09090b 80%,
+                    #151518 87%,
+                    #0a0a0c 90%,
+                    #1b1b1f 96%,
+                    #050507 98.5%,
+                    #000000 100%
+                );
+            box-shadow: 
+                0 28px 60px rgba(0, 0, 0, 0.55),
+                0 8px 22px rgba(0, 0, 0, 0.45),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.07);
+            position: relative;
+            will-change: transform;
+        }
+
+        /* Conic light reflection over the vinyl grooves */
+        .vinyl-sheen {
+            background: conic-gradient(
+                from 35deg at 50% 50%,
+                 rgba(255,255,255,0) 0deg,
+                rgba(255,255,255,0.11) 25deg,
+                rgba(255,255,255,0.02) 48deg,
+                rgba(255,255,255,0) 90deg,
+                rgba(255,255,255,0) 180deg,
+                rgba(255,255,255,0.10) 205deg,
+                rgba(255,255,255,0.02) 228deg,
+                rgba(255,255,255,0) 270deg,
+                rgba(255,255,255,0) 360deg
+            );
+            pointer-events: none;
+        }
+
+        /* Repeating micro-grooves */
+        .vinyl-micro-grooves {
+            background: repeating-radial-gradient(
+                circle at 50% 50%,
+                rgba(255, 255, 255, 0.028) 0px,
+                rgba(255, 255, 255, 0.028) 1px,
+                transparent 1.5px,
+                transparent 3.5px
+            );
+            pointer-events: none;
+        }
+
+        /* Tonearm assembly */
+        .tonearm-container {
+            transform-origin: 50% 52px;
+            transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+            z-index: 30;
+        }
+
+        .tonearm-container.dragging {
+            transition: none !important;
+        }
+
+        /* Bookshelf Architecture & Vinyl Sleeve Cards */
+        .bookshelf-scroll {
+            background: 
+                radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+                linear-gradient(180deg, #141418 0%, #0d0d10 100%);
+        }
+
+        /* Wooden / Designer Matte Shelf Ledge */
+        .shelf-tier {
+            position: relative;
+            padding-bottom: 22px;
+            margin-bottom: 28px;
+        }
+
+        .shelf-plank {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 18px;
+            background: linear-gradient(180deg, #3c2e27 0%, #261c17 65%, #17100d 100%);
+            border-top: 1px solid rgba(255, 255, 255, 0.16);
+            border-bottom: 2px solid #090706;
+            border-radius: 3px;
+            box-shadow: 
+                0 14px 28px rgba(0, 0, 0, 0.85),
+                0 4px 8px rgba(0, 0, 0, 0.6),
+                inset 0 1px 1px rgba(255, 255, 255, 0.12);
+            z-index: 10;
+        }
+
+        /* Record Sleeve / Folder standing on the shelf */
+        .shelf-record-card {
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease;
+            transform-origin: bottom center;
+            position: relative;
+            z-index: 15;
+        }
+
+        .shelf-record-card:hover {
+            transform: translateY(-10px) scale(1.02);
+        }
+
+        .shelf-record-card:active {
+            transform: translateY(-4px) scale(0.98);
+        }
+
+        /* Vinyl disc peeking out from behind the sleeve when active/hovered */
+        .sleeve- vinyl-peek {
+            transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .shelf-record-card:hover .sleeve-vinyl-peek,
+        .shelf-record-card.playing-now .sleeve-vinyl-peek {
+            transform: translateY(-14px) rotate(25deg);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.16);
+            border-radius: 9999px;
+        }
+
+        /* Subtle grain overlay for skeuomorphic warmth */
+        .noise-overlay {
+            background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 0);
+            background-size: 3px 3px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col select-none">
+
+    <!-- ================= COMPACT HEADER (NO OVERFLOW ON ANY MOBILE) ================= -->
+    <header class="h-14 px-3 sm:px-6 bg-zinc-950/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between gap-2 z-40 shrink-0 w-full overflow-hidden">
+        <!-- Brand Logo + The Beatly Title -->
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-black border border-white/15 shadow-lg flex items-center justify-center overflow-hidden shrink-0">
+                <svg viewBox="0 0 100 100" class="w-7 h-7">
+                    <defs>
+                        <linearGradient id="ribbonMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#FFFFFF"/>
+                            <stop offset="65%" stop-color="#F1F3F9"/>
+                            <stop offset="100%" stop-color="#C8CEDE"/>
+                        </linearGradient>
+                        <linearGradient id="stemLeftGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#565B6B"/>
+                            <stop offset="32%" stop-color="#9CA3B5"/>
+                            <stop offset="70%" stop-color="#EDEFF5"/>
+                            <stop offset="100%" stop-color="#D5DAE6"/>
+                        </linearGradient>
+                        <linearGradient id="stemRightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#4A4E5D"/>
+                            <stop offset="35%" stop-color="#949BAE"/>
+                            <stop offset="75%" stop-color="#F5F7FA"/>
+                            <stop offset="100%" stop-color="#D0D5E3"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M 41 37 L 51 33 L 51 64 C 51 74 40 83 28 83 C 19 83 14 76 16 67 C 18 57 29 51 41 54 Z" fill="url(#stemLeftGrad)"/>
+                    <path d="M 74 26 L 83 22 L 83 52 C 83 62 73 70 62 70 C 53 70 49 63 51 55 C 53 46 63 41 74 44 Z" fill="url(#stemRightGrad)"/>
+                    <path d="M 41 48 C 41 38 45 31 53 28 L 72 20 C 79 17 83 22 83 31 L 83 41 C 83 34 78 32 72 34 L 53 42 C 45 45 41 51 41 57 Z" fill="url(#ribbonMain)"/>
+                </svg>
+            </div>
+            <div class="truncate">
+                <span class="font-extrabold tracking-tight text-base sm:text-lg text-white">The <span class="text-amber-400">Beatly</span></span>
+            </div>
+        </div>
+
+        <!-- Right Compact Action Buttons: Add MP3, Settings (⚙️), Account -->
+        <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <!-- Upload MP3 Button -->
+            <button onclick="openUploadModal()" class="h-9 px-3 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition">
+                <svg class="w-4 h-4 stroke-[2.5] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span>MP3</span>
+            </button>
+
+            <!-- Dedicated Settings Button (⚙️) -->
+            <button onclick="openSettingsModal()" title="Настройки проигрывателя" class="w-9 h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition relative">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span id="settingsCrackleDot" class="hidden w-2 h-2 rounded-full bg-amber-400 absolute top-1.5 right-1.5"></span>
+            </button>
+
+            <!-- User Account Button -->
+            <button onclick="openAuthModal()" class="h-9 px-2 sm:px-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 flex items-center gap-1.5 transition">
+                <div id="headerUserAvatar" class="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 text-black font-extrabold text-xs flex items-center justify-center shrink-0">
+                    G
+                </div>
+                <span id="headerUserName" class="text-xs font-semibold text-zinc-200 max-w-[75px] truncate hidden md:inline">Гость</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ================= MAIN WORKSPACE (CLEAN TURNTABLE + BOOKSHELF) ================= -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- LEFT PANE: CLEAN SKEUOMORPHIC VINYL TURNTABLE (Exact match to Image 3) -->
+        <section id="panePlayer" class="w-full lg:w-[46%] xl:w-[44%] h-full flex flex-col justify-between relative overflow-hidden transition-colors duration-500 shrink-0" style="background-color: var(--player-bg); color: var(--player-text);">
+            <div class="absolute inset-0 noise-overlay"></div>
+
+            <!-- Center Turntable Stage: Clean Vinyl Disc + Tonearm (No clutter badges at top!) -->
+            <div class="relative flex-1 flex items-center justify-center pt-4 sm:pt-6 select-none overflow-hidden">
+                <div class="relative w-[290px] h-[290px] sm:w-[360px] sm:h-[360px] md:w-[390px] md:h-[390px] flex items-center justify-center">
+                    
+                    <!-- Vinyl Platter (Shifted slightly left like in Image 3 for authentic composition) -->
+                    <div id="vinylDisc" class="vinyl-disc w-[88%] h-[88%] rounded-full -ml-8 sm:-ml-12 flex items-center justify-center">
+                        <div class="vinyl-sheen absolute inset-0 rounded-full"></div>
+                        <div class="vinyl-micro-grooves absolute inset-4 rounded-full"></div>
+
+                        <!-- Inner Label Ring Recessed Border -->
+                        <div class="w-[46%] h-[46%] rounded-full p-2 bg-zinc-950/90 shadow-inner flex items-center justify-center relative z-10 border border-white/5">
+                            <!-- Center Album Cover Art -->
+                            <div id="vinylCenterArt" class="w-full h-full rounded-full bg-zinc-900 bg-cover bg-center relative overflow-hidden shadow-inner flex items-center justify-center">
+                                <!-- Default SVG fallback if no image -->
+                                <div id="vinylFallbackLogo" class="hidden w-full h-full bg-black flex items-center justify-center">
+                                    <svg viewBox="0 0 100 100" class="w-16 h-16 opacity-90">
+                                        <path d="M 41 37 L 51 33 L 51 64 C 51 74 40 83 28 83 C 19 83 14 76 16 67 C 18 57 29 51 41 54 Z" fill="url(#stemLeftGrad)"/>
+                                        <path d="M 74 26 L 83 22 L 83 52 C 83 62 73 70 62 70 C 53 70 49 63 51 55 C 53 46 63 41 74 44 Z" fill="url(#stemRightGrad)"/>
+                                        <path d="M 41 48 C 41 38 45 31 53 28 L 72 20 C 79 17 83 22 83 31 L 83 41 C 83 34 78 32 72 34 L 53 42 C 45 45 41 51 41 57 Z" fill="url(#ribbonMain)"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <!-- Center Spindle Hole -->
+                            <div class="w-3.5 h-3.5 rounded-full bg-zinc-900 border border-white/20 absolute z-20 shadow-md"></div>
+                        </div>
+                    </div>
+
+                    <!-- Recessed Circular Pivot Base Outline (Top Right like Image 3) -->
+                    <div class="absolute top-1 right-0 sm:right-1 w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-black/20 shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)] pointer-events-none"></div>
+
+                    <!-- Interactive Tonearm Assembly -->
+                    <div id="tonearm" class="tonearm-container absolute top-2 right-2 sm:right-3 w-24 sm:w-28 h-[265px] sm:h-[320px] cursor-grab active:cursor-grabbing" style="transform: rotate(0deg);" title="Потяните тонарм для перемещения по пластинке">
+                        <svg viewBox="0 0 120 340" class="w-full h-full overflow-visible drop-shadow-[0_14px_18px_rgba(0,0,0,0.45)]">
+                            <defs>
+                                <linearGradient id="armTubeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#75757A"/>
+                                    <stop offset="30%" stop-color="#E4E4E9"/>
+                                    <stop offset="55%" stop-color="#FFFFFF"/>
+                                    <stop offset="80%" stop-color="#9E9EA6"/>
+                                    <stop offset="100%" stop-color="#525257"/>
+                                </linearGradient>
+                                <linearGradient id="pivotBlockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#2E2E32"/>
+                                    <stop offset="100%" stop-color="#141416"/>
+                                </linearGradient>
+                            </defs>
+
+                            <g transform="translate(60, 52) rotate(12)">
+                                <rect x="-18" y="-32" width="32" height="14" rx="2" fill="#1F1F23" stroke="#101012" stroke-width="1"/>
+                                <rect x="-26" y="-20" width="52" height="36" rx="4" fill="url(#pivotBlockGrad)" stroke="#0d0d0f" stroke-width="1.5"/>
+                                <line x1="-24" y1="-12" x2="24" y2="-12" stroke="rgba(255,255,255,0.14)" stroke-width="1.5"/>
+                                <rect x="4" y="14" width="16" height="16" rx="2" fill="#1B1B1E"/>
+                            </g>
+
+                            <line x1="68" y1="74" x2="26" y2="255" stroke="url(#armTubeGrad)" stroke-width="9.5" stroke-linecap="round"/>
+
+                            <g transform="translate(26, 255) rotate(14)">
+                                <rect x="-7" y="-8" width="14" height="18" rx="2" fill="#1F1F23"/>
+                            </g>
+
+                            <g transform="translate(23, 266) rotate(32)">
+                                <rect x="-13" y="0" width="26" height="46" rx="5" fill="url(#pivotBlockGrad)" stroke="#0e0e10" stroke-width="1.2"/>
+                                <rect x="8" y="34" width="10" height="4" rx="2" fill="#18181b"/>
+                                <circle cx="0" cy="12" r="2" fill="#f59e0b" opacity="0.8"/>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Section: Track Typography, Scrubber & Tactile Hardware Buttons -->
+            <div class="relative z-20 px-6 sm:px-10 pb-5 sm:pb-8 pt-1">
+                <div class="mb-4">
+                    <div class="flex items-baseline justify-between gap-4">
+                        <h1 id="playerTrackTitle" class="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight truncate">
+                            SPLIT PERSONA
+                        </h1>
+                        <span id="playerTimeDisplay" class="text-xs sm:text-sm font-mono font-bold opacity-75 shrink-0">
+                            0:00 / 0:00
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between mt-0.5">
+                        <p id="playerTrackArtist" class="text-base sm:text-lg font-normal opacity-80 truncate">
+                            Duality
+                        </p>
+                    </div>
+
+                    <!-- Subtle Seek Progress Bar -->
+                    <div class="mt-3 relative">
+                        <input id="seekSlider" type="range" min="0" max="100" step="0.1" value="0" oninput="seekAudio(this.value)" class="w-full h-1.5 bg-black/20 rounded-lg appearance-none cursor-pointer accent-zinc-900">
+                    </div>
+                </div>
+
+                <!-- Hardware Pill Buttons Row (Exact layout from Image 3) -->
+                <div class="flex items-center justify-between pt-1">
+                    <!-- Left: PLAY / PAUSE Button -->
+                    <div class="flex flex-col items-center gap-2">
+                        <button id="hwPlayBtn" onclick="togglePlay()" aria-label="Play or Pause" class="hw-pill-btn"></button>
+                        <span id="hwPlayLabel" class="text-[11px] sm:text-xs font-bold tracking-wider uppercase opacity-85">PLAY</span>
+                    </div>
+
+                    <!-- Right: PREV & NEXT Buttons -->
+                    <div class="flex items-center gap-4 sm:gap-6">
+                        <div class="flex flex-col items-center gap-2">
+                            <button onclick="prevTrack()" aria-label="Previous Track" class="hw-pill-btn"></button>
+                            <svg class="w-4 h-4 opacity-85" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                            </svg>
+                        </div>
+
+                        <div class="flex flex-col items-center gap-2">
+                            <button onclick="nextTrack()" aria-label="Next Track" class="hw-pill-btn"></button>
+                            <svg class="w-4 h-4 opacity-85" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANE: BOOKSHELF LIBRARY WITH FOLDERS & VINYL RECORDS -->
+        <section id="paneCrate" class="w-full lg:w-[54%] xl:w-[56%] h-full hidden lg:flex flex-col relative overflow-hidden bookshelf-scroll">
+            
+            <!-- Bookshelf Top Controls: Filter Tabs + Create Folder Button -->
+            <div class="relative z-30 px-4 sm:px-6 pt-4 pb-3 bg-zinc-950/80 backdrop-blur-md border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
+                
+                <!-- Mode Switcher: All Vinyls vs Folders/Playlists -->
+                <div class="flex items-center bg-zinc-900 p-1 rounded-xl border border-white/10">
+                    <button id="libModeAll" onclick="setLibraryMode('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow">
+                        Все полки
+                    </button>
+                    <button id="libModeFolders" onclick="setLibraryMode('folders')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-zinc-300 hover:text-white">
+                        Папки (<span id="countFoldersBadge">0</span>)
+                    </button>
+                    <button id="libModeTracks" onclick="setLibraryMode('tracks')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-zinc-300 hover:text-white">
+                        Пластинки (<span id="countTracksBadge">0</span>)
+                    </button>
+                </div>
+
+                <!-- Right Actions: Back from Folder / Create Folder -->
+                <div class="flex items-center gap-2">
+                    <div id="activeFolderFilterBar" class="hidden items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-200">
+                        <span id="activeFolderTitleText" class="max-w-[120px] truncate">Папка</span>
+                        <button onclick="resetFolderFilter()" class="hover:text-white font-bold ml-1" title="Ко всем полкам">✕</button>
+                    </div>
+
+                    <button onclick="openCreateFolderModal()" class="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 transition">
+                        <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+                        <span>+ Папка</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Wooden Bookshelf Container -->
+            <div id="bookshelfContainer" class="flex-1 overflow-y-auto px-4 sm:px-6 pt-6 pb-10">
+                <!-- Dynamic Shelves with Folders & Vinyl Records rendered via JS -->
+            </div>
+        </section>
+    </main>
+
+    <!-- ================= MOBILE BOTTOM NAVIGATION BAR (Zero Header Overflow!) ================= -->
+    <nav class="lg:hidden h-14 bg-zinc-950 border-t border-white/10 grid grid-cols-2 px-3 py-1.5 gap-2 z-40 shrink-0">
+        <button id="mobTabPlayer" onclick="switchMobileView('player')" class="rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all bg-amber-500 text-black shadow">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+            </svg>
+            <span>Проигрыватель</span>
+        </button>
+        <button id="mobTabCrate" onclick="switchMobileView('crate')" class="rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all text-zinc-400 hover:text-white bg-zinc-900/80">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+            </svg>
+            <span>Книжная полка</span>
+        </button>
+    </nav>
+
+    <!-- ================= MODAL 0: SETTINGS MODAL (Цвет корпуса, Потрескивание, Звук) ================= -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-white/15 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center">⚙️</div>
+                    <div>
+                        <h2 class="text-base font-bold text-white">Настройки The Beatly</h2>
+                        <p class="text-[11px] text-zinc-400">Цвет проигрывателя и аналоговый звук</p>
+                    </div>
+                </div>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- 1. Auto-sync Color Toggle -->
+                <div class="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950 border border-white/10">
+                    <div>
+                        <div class="text-xs font-bold text-white">Авто-цвет под пластинку</div>
+                        <div class="text-[11px] text-zinc-400">Корпус меняет цвет при смене трека</div>
+                    </div>
+                    <input type="checkbox" id="autoColorCheckbox" checked onchange="toggleAutoDeckColor(this.checked)" class="w-5 h-5 accent-amber-500 rounded cursor-pointer">
+                </div>
+
+                <!-- 2. Custom Turntable Body Color -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2.5">Цвет корпуса проигрывателя</label>
+                    <div class="flex items-center justify-between gap-2 bg-zinc-950 p-3 rounded-xl border border-white/10">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" onclick="pickDeckColorFromSettings('#F59E0B')" class="w-7 h-7 rounded-full bg-[#F59E0B] border-2 border-white/30 hover:scale-110 transition" title="Янтарный"></button>
+                            <button type="button" onclick="pickDeckColorFromSettings('#E07A5F')" class="w-7 h-7 rounded-full bg-[#E07A5F] border-2 border-white/20 hover:scale-110 transition" title="Терракотовый"></button>
+                            <button type="button" onclick="pickDeckColorFromSettings('#5B9BD5')" class="w-7 h-7 rounded-full bg-[#5B9BD5] border-2 border-white/20 hover:scale-110 transition" title="Синий"></button>
+                            <button type="button" onclick="pickDeckColorFromSettings('#A3D977')" class="w-7 h-7 rounded-full bg-[#A3D977] border-2 border-white/20 hover:scale-110 transition" title="Неоновая флора"></button>
+                            <button type="button" onclick="pickDeckColorFromSettings('#E5E5E5')" class="w-7 h-7 rounded-full bg-[#E5E5E5] border-2 border-white/20 hover:scale-110 transition" title="Белый"></button>
+                            <button type="button" onclick="pickDeckColorFromSettings('#18181B')" class="w-7 h-7 rounded-full bg-[#18181B] border-2 border-white/30 hover:scale-110 transition" title="Матовый черный"></button>
+                        </div>
+                        <label class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-200 cursor-pointer shrink-0 flex items-center gap-1.5">
+                            <span>Палитра</span>
+                            <input type="color" id="customDeckColorPicker" value="#F59E0B" onchange="pickDeckColorFromSettings(this.value)" class="w-4 h-4 border-0 bg-transparent cursor-pointer">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 3. Vinyl Crackle (Виниловое потрескивание) -->
+                <div class="p-3.5 rounded-xl bg-zinc-950 border border-white/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-bold text-white">Виниловое потрескивание</div>
+                            <div class="text-[11px] text-zinc-400">Теплый аналоговый шум иглы по пластинке</div>
+                        </div>
+                        <button id="crackleToggleBtn" type="button" onclick="toggleCrackle()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-800 text-zinc-300 border border-white/10 transition">
+                            Выкл
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3 pt-1">
+                        <span class="text-[11px] text-zinc-400 w-24">Уровень шума:</span>
+                        <input id="crackleVolSlider" type="range" min="0.01" max="0.25" step="0.01" value="0.08" oninput="changeCrackleVolume(this.value)" class="flex-1 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    </div>
+                </div>
+
+                <!-- 4. Master Volume & Turntable RPM Speed -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="p-3 rounded-xl bg-zinc-950 border border-white/10">
+                        <label class="block text-[11px] font-semibold text-zinc-400 mb-2">Громкость музыки</label>
+                        <input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.85" oninput="changeVolume(this.value)" class="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    </div>
+                    <div class="p-3 rounded-xl bg-zinc-950 border border-white/10 flex items-center justify-between">
+                        <span class="text-[11px] font-semibold text-zinc-400">Скорость диска:</span>
+                        <div class="flex bg-zinc-900 p-0.5 rounded-lg border border-white/10">
+                            <button id="rpm33Btn" type="button" onclick="setRpmSpeed(33)" class="px-2 py-1 rounded-md text-[11px] font-bold bg-amber-500 text-black">33⅓</button>
+                            <button id="rpm45Btn" type="button" onclick="setRpmSpeed(45)" class="px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400">45</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="button" onclick="closeSettingsModal()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs sm:text-sm">
+                        Готово
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 1: ADD MP3 TRACK + COVER + FOLDER ================= -->
+    <div id="uploadModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-white/15 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold">♪</div>
+                    <div>
+                        <h2 class="text-base font-bold text-white">Загрузить MP3 пластинку</h2>
+                        <p class="text-xs text-zinc-400">Файл сохранится в памяти вашего аккаунта (IndexedDB)</p>
+                    </div>
+                </div>
+                <button onclick="closeUploadModal()" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+
+            <form id="uploadForm" onsubmit="handleSaveTrack(event)" class="p-6 overflow-y-auto space-y-4">
+                <!-- 1. Select MP3 File -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-zinc-300 mb-1.5">1. Аудиофайл (MP3, WAV, OGG, M4A) *</label>
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 hover:border-amber-400/60 rounded-xl p-4 cursor-pointer bg-zinc-950/60 transition">
+                        <svg class="w-7 h-7 text-amber-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                        </svg>
+                        <span id="mp3FileNameLabel" class="text-xs font-semibold text-zinc-200 text-center">Нажмите, чтобы выбрать MP3 файл с устройства</span>
+                        <span class="text-[11px] text-zinc-500 mt-0.5">Автоматическое определение названия из имени файла</span>
+                        <input type="file" id="mp3FileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a" required onchange="onMp3FileSelected(this)" class="hidden">
+                    </label>
+                </div>
+
+                <!-- 2. Title & Artist -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">Название трека *</label>
+                        <input type="text" id="inputTrackTitle" required placeholder="Например: Blush Hideaway" class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">Исполнитель / Подпись *</label>
+                        <input type="text" id="inputTrackArtist" required placeholder="Например: WINTER BLOOM" class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                </div>
+
+                <!-- 3. Playlist / Folder Selection -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-semibold text-zinc-300">Папка / Плейлист</label>
+                        <button type="button" onclick="toggleInlineNewFolder()" class="text-xs font-semibold text-amber-400 hover:underline">+ Создать новую папку</button>
+                    </div>
+                    <select id="inputTrackFolder" class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                        <!-- Populated via JS -->
+                    </select>
+                    <!-- Inline New Folder Input -->
+                    <div id="inlineNewFolderBox" class="hidden mt-2 p-3 rounded-xl bg-zinc-950 border border-amber-500/40 space-y-2">
+                        <div class="flex gap-2">
+                            <input type="text" id="inlineNewFolderName" placeholder="Название новой папки..." class="flex-1 px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-xs text-white">
+                            <button type="button" onclick="createFolderInline()" class="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-bold text-xs">Создать</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Custom Cover Image & Spine/Theme Color -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Обложка пластинки</label>
+                        <div class="flex items-center gap-3">
+                            <div id="coverPreviewBox" class="w-16 h-16 rounded-xl bg-black border border-white/15 bg-cover bg-center shrink-0 flex items-center justify-center overflow-hidden">
+                                <span class="text-[10px] text-zinc-500 text-center px-1">Лого по умолч.</span>
+                            </div>
+                            <label class="flex-1 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-xs font-semibold text-center cursor-pointer transition">
+                                Выбрать фото
+                                <input type="file" id="coverFileInput" accept="image/*" onchange="onCoverFileSelected(this)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Цвет торца и плеера</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="inputSpineColor" value="#F59E0B" class="w-10 h-10 rounded-lg bg-transparent border-0 cursor-pointer">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" onclick="setModalColor('#D89B84')" class="w-5 h-5 rounded-full bg-[#D89B84] border border-white/20"></button>
+                                <button type="button" onclick="setModalColor('#5B9BD5')" class="w-5 h-5 rounded-full bg-[#5B9BD5] border border-white/20"></button>
+                                <button type="button" onclick="setModalColor('#B8DC6F')" class="w-5 h-5 rounded-full bg-[#B8DC6F] border border-white/20"></button>
+                                <button type="button" onclick="setModalColor('#F59E0B')" class="w-5 h-5 rounded-full bg-[#F59E0B] border border-white/20"></button>
+                                <button type="button" onclick="setModalColor('#9CC9E8')" class="w-5 h-5 rounded-full bg-[#9CC9E8] border border-white/20"></button>
+                                <button type="button" onclick="setModalColor('#F3F4F6')" class="w-5 h-5 rounded-full bg-[#F3F4F6] border border-white/20"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-white/10 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300">Отмена</button>
+                    <button type="submit" id="saveTrackSubmitBtn" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/20">
+                        Сохранить в коллекцию
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 2: CREATE NEW FOLDER / PLAYLIST ================= -->
+    <div id="folderModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-white/15 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                <h2 class="text-base font-bold text-white">Новая папка / Плейлист</h2>
+                <button onclick="closeCreateFolderModal()" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center">✕</button>
+            </div>
+            <form onsubmit="handleCreateFolderSubmit(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-300 mb-1">Название папки *</label>
+                    <input type="text" id="newFolderNameInput" required placeholder="Например: Ночной Драйв" class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-300 mb-1">Описание / Подпись на торце</label>
+                    <input type="text" id="newFolderSubInput" placeholder="Например: Chill & Synth" class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                </div>
+                <div class="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">Обложка папки</label>
+                        <label class="block px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-xs font-semibold text-center cursor-pointer">
+                            Выбрать картинку
+                            <input type="file" id="newFolderCoverInput" accept="image/*" onchange="onFolderCoverSelected(this)" class="hidden">
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">Цвет корешка</label>
+                        <input type="color" id="newFolderColorInput" value="#5B9BD5" class="w-full h-9 rounded-lg bg-transparent cursor-pointer">
+                    </div>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeCreateFolderModal()" class="px-4 py-2 rounded-xl bg-zinc-800 text-xs font-semibold text-zinc-300">Отмена</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs">Создать папку</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 3: USER ACCOUNT / LOCAL AUTH ================= -->
+    <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-white/15 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="p-6 text-center border-b border-white/10 relative">
+                <button onclick="closeAuthModal()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center">✕</button>
+                <!-- Brand Logo in Auth Modal -->
+                <div class="w-16 h-16 rounded-2xl bg-black border border-white/15 mx-auto mb-3 flex items-center justify-center shadow-xl">
+                    <svg viewBox="0 0 100 100" class="w-12 h-12">
+                        <path d="M 41 37 L 51 33 L 51 64 C 51 74 40 83 28 83 C 19 83 14 76 16 67 C 18 57 29 51 41 54 Z" fill="url(#stemLeftGrad)"/>
+                        <path d="M 74 26 L 83 22 L 83 52 C 83 62 73 70 62 70 C 53 70 49 63 51 55 C 53 46 63 41 74 44 Z" fill="url(#stemRightGrad)"/>
+                        <path d="M 41 48 C 41 38 45 31 53 28 L 72 20 C 79 17 83 22 83 31 L 83 41 C 83 34 78 32 72 34 L 53 42 C 45 45 41 51 41 57 Z" fill="url(#ribbonMain)"/>
+                    </svg>
+                </div>
+                <h2 class="text-lg font-extrabold text-white">Аккаунт The Beatly</h2>
+                <p class="text-xs text-zinc-400 mt-0.5">У каждого профиля своя личная книжная полка с сохраненными MP3</p>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <!-- Current Active Profile Box -->
+                <div class="p-3.5 rounded-xl bg-zinc-950 border border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div id="authCurrentAvatar" class="w-10 h-10 rounded-xl bg-amber-500 text-black font-black flex items-center justify-center text-base">G</div>
+                        <div>
+                            <div class="text-xs text-zinc-400">Текущий профиль:</div>
+                            <div id="authCurrentName" class="text-sm font-bold text-white">Гость</div>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Активен</span>
+                </div>
+
+                <!-- Switch / Login or Create New Account Form -->
+                <form onsubmit="handleAuthSubmit(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">Имя пользователя (Логин) *</label>
+                        <input type="text" id="authUsernameInput" required placeholder="Введите ваш никнейм..." class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-300 mb-1">PIN-код или Пароль (необязательно)</label>
+                        <input type="password" id="authPasswordInput" placeholder="••••" class="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs sm:text-sm transition shadow-lg shadow-amber-500/20">
+                        Войти / Создать профиль
+                    </button>
+                </form>
+
+                <!-- Saved Profiles List -->
+                <div>
+                    <div class="text-xs font-semibold text-zinc-400 mb-2">Быстрое переключение профилей на устройстве:</div>
+                    <div id="savedUsersList" class="space-y-1.5 max-h-32 overflow-y-auto">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TOAST NOTIFICATION ================= -->
+    <div id="toastBox" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-zinc-900/95 border border-white/15 text-white text-xs font-semibold shadow-2xl pointer-events-none opacity-0 transition-opacity duration-300 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+        <span id="toastMessage">Готово</span>
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio id="mainAudio" preload="auto" crossorigin="anonymous"></audio>
+
+    <!-- ================= APPLICATION LOGIC ================= -->
+    <script>
+        /********************************************************************
+         * 1. PROCEDURAL ARTWORK & DEMO AUDIO GENERATOR
+         * Ensures all 9 reference sleeves from Image 2 & Image 3 look and play
+         * immediately out-of-the-box without external broken links.
+         ********************************************************************/
+        function createCoverDataURL(type, c1, c2, c3) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 600;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+
+            if (type === 'split-persona') {
+                // High-contrast monochrome split portrait aesthetic (Matches Image 3)
+                ctx.fillStyle = '#121214';
+                ctx.fillRect(0, 0, 600, 600);
+
+                // Left side moody shadow portrait silhouette
+                const gLeft = ctx.createRadialGradient(240, 280, 20, 240, 280, 280);
+                gLeft.addColorStop(0, '#a1a1aa');
+                gLeft.addColorStop(0.6, '#3f3f46');
+                gLeft.addColorStop(1, '#09090b');
+                ctx.fillStyle = gLeft;
+                ctx.fillRect(0, 0, 298, 600);
+
+                // Right side bright studio portrait silhouette
+                const gRight = ctx.createRadialGradient(350, 260, 20, 350, 260, 290);
+                gRight.addColorStop(0, '#f4f4f5');
+                gRight.addColorStop(0.65, '#71717a');
+                gRight.addColorStop(1, '#18181b');
+                ctx.fillStyle = gRight;
+                ctx.fillRect(302, 0, 298, 600);
+
+                // Artistic geometric face contours
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(285, 290, 145, Math.PI * 0.5, Math.PI * 1.5);
+                ctx.fillStyle = 'rgba(255,255,255,0.22)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(315, 275, 145, -Math.PI * 0.5, Math.PI * 0.5);
+                ctx.fillStyle = 'rgba(0,0,0,0.28)';
+                ctx.fill();
+                ctx.restore();
+
+                // Center split line
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(300, 0);
+                ctx.lineTo(292, 600);
+                ctx.stroke();
+            } else {
+                // Editorial atmospheric artwork matching Image 2 sleeves
+                const grad = ctx.createLinearGradient(0, 0, 600, 600);
+                grad.addColorStop(0, c1);
+                grad.addColorStop(0.55, c2);
+                grad.addColorStop(1, c3 || c1);
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 600, 600);
+
+                // Organic flowing forms
+                ctx.fillStyle = 'rgba(255,255,255,0.16)';
+                ctx.beginPath();
+                ctx.ellipse(300, 340, 240, 140, -0.25, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(0,0,0,0.18)';
+                ctx.beginPath();
+                ctx.arc(420, 210, 150, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            return canvas.toDataURL('image/jpeg', 0.86);
+        }
+
+        // Generates a warm harmonic synth/electric-piano loop as a real playable WAV Blob
+        function createSynthAudioBlob(rootFreq = 220, tempo = 1) {
+            const sampleRate = 22050;
+            const durationSeconds = 12;
+            const numSamples = sampleRate * durationSeconds;
+            const buffer = new ArrayBuffer(44 + numSamples * 2);
+            const view = new DataView(buffer);
+
+            const writeString = (offset, str) => {
+                for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+            };
+
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + numSamples * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, numSamples * 2, true);
+
+            const chordRatios = [1, 1.25, 1.5, 1.875];
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const bar = Math.floor(t * tempo) % 4;
+                const shift = bar === 1 ? 1.122 : (bar === 2 ? 0.89 : (bar === 3 ? 1.334 : 1.0));
+                let sample = 0;
+                for (let c = 0; c < chordRatios.length; c++) {
+                    const freq = rootFreq * chordRatios[c] * shift;
+                    sample += Math.sin(2 * Math.PI * freq * t) * 0.16;
+                }
+                // Warm Rhodes-like envelope pulse
+                const env = 0.65 + 0.35 * Math.sin(2 * Math.PI * (tempo * 2) * t);
+                const val = Math.max(-1, Math.min(1, sample * env));
+                view.setInt16(44 + i * 2, val * 24000, true);
+            }
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        /********************************************************************
+         * 2. INDEXEDDB STORAGE ENGINE (Supports Blobs, Folders, Multi-User)
+         ********************************************************************/
+        const DB_NAME = 'VinylFlowStudioDB_v1';
+        const DB_VERSION = 1;
+        let dbInstance = null;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('tracks')) {
+                        const trackStore = db.createObjectStore('tracks', { keyPath: 'id' });
+                        trackStore.createIndex('owner', 'owner', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('folders')) {
+                        const folderStore = db.createObjectStore('folders', { keyPath: 'id' });
+                        folderStore.createIndex('owner', 'owner', { unique: false });
+                    }
+                };
+                req.onsuccess = (e) => {
+                    dbInstance = e.target.result;
+                    resolve(dbInstance);
+                };
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function dbGetAllByOwner(storeName, owner) {
+            return new Promise((resolve, reject) => {
+                const tx = dbInstance.transaction(storeName, 'readonly');
+                const store = tx.objectStore(storeName);
+                const idx = store.index('owner');
+                const req = idx.getAll(owner);
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function dbPutItem(storeName, item) {
+            return new Promise((resolve, reject) => {
+                const tx = dbInstance.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.put(item);
+                req.onsuccess = () => resolve(item);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function dbDeleteItem(storeName, id) {
+            return new Promise((resolve, reject) => {
+                const tx = dbInstance.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.delete(id);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        /********************************************************************
+         * 3. APPLICATION STATE
+         ********************************************************************/
+        let currentUser = localStorage.getItem('vinylflow_active_user') || 'Гость';
+        let savedUsers = JSON.parse(localStorage.getItem('vinylflow_users') || '[{"username":"Гость","pin":""}]');
+
+        let tracks = [];
+        let folders = [];
+        let libraryMode = 'all'; // 'all' | 'folders' | 'tracks'
+        let activeFolderId = 'all';
+
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+        let vinylRotationDeg = 0;
+        let rpmSpeed = 33; // 33 or 45
+        let autoDeckColor = true;
+        let lastFrameTime = null;
+        let currentObjectUrl = null;
+
+        // Pending Upload Modal files
+        let pendingCoverDataUrl = null;
+        let pendingFolderCoverDataUrl = null;
+
+        // Web Audio API Vinyl Crackle Node
+        let audioCtx = null;
+        let crackleNode = null;
+        let crackleGain = null;
+        let isCrackleEnabled = false;
+        let crackleVolume = 0.08;
+
+        /********************************************************************
+         * 4. DEFAULT SEED DATA (Exact titles & colors from Image 2 & Image 3)
+         ********************************************************************/
+        async function seedDefaultCollectionForUser(username) {
+            const defaultFolders = [
+                {
+                    id: `fld_${username}_1`,
+                    owner: username,
+                    title: 'Indie & Dream Pop',
+                    subtitle: 'WINTER BLOOM',
+                    spineColor: '#D89B84',
+                    textColor: '#1E1B18',
+                    coverUrl: createCoverDataURL('editorial', '#d89b84', '#b5654d', '#5c2c23')
+                },
+                {
+                    id: `fld_${username}_2`,
+                    owner: username,
+                    title: 'Midnight Analog',
+                    subtitle: 'Aurelia Duo',
+                    spineColor: '#F3F4F6',
+                    textColor: '#111827',
+                    coverUrl: createCoverDataURL('split-persona')
+                },
+                {
+                    id: `fld_${username}_3`,
+                    owner: username,
+                    title: 'Sunset Grooves',
+                    subtitle: 'Sofia Marquez',
+                    spineColor: '#F59E0B',
+                    textColor: '#111827',
+                    coverUrl: createCoverDataURL('editorial', '#f97316', '#f59e0b', '#1d4ed8')
+                }
+            ];
+
+            const defaultTracks = [
+                {
+                    id: `trk_${username}_0`,
+                    owner: username,
+                    title: 'SPLIT PERSONA',
+                    artist: 'Duality',
+                    folderId: defaultFolders[1].id,
+                    spineColor: '#F59E0B',
+                    textColor: '#18181B',
+                    coverUrl: createCoverDataURL('split-persona'),
+                    audioBlob: createSynthAudioBlob(196, 1.1),
+                    createdAt: Date.now() - 9000
+                },
+                {
+                    id: `trk_${username}_1`,
+                    owner: username,
+                    title: 'Blush Hideaway',
+                    artist: 'WINTER BLOOM',
+                    folderId: defaultFolders[0].id,
+                    spineColor: '#D89B84',
+                    textColor: '#271914',
+                    coverUrl: createCoverDataURL('editorial', '#e6a992', '#c87a61', '#7d4132'),
+                    audioBlob: createSynthAudioBlob(220, 0.9),
+                    createdAt: Date.now() - 8000
+                },
+                {
+                    id: `trk_${username}_2`,
+                    owner: username,
+                    title: 'Pocket Blooms',
+                    artist: 'meadowline',
+                    folderId: defaultFolders[0].id,
+                    spineColor: '#5B9BD5',
+                    textColor: '#FFFFFF',
+                    coverUrl: createCoverDataURL('editorial', '#1e3a8a', '#2563eb', '#0f172a'),
+                    audioBlob: createSynthAudioBlob(246.94, 1.0),
+                    createdAt: Date.now() - 7000
+                },
+                {
+                    id: `trk_${username}_3`,
+                    owner: username,
+                    title: 'Hearts in Glass',
+                    artist: 'Neon Flora',
+                    folderId: defaultFolders[0].id,
+                    spineColor: '#B8DC6F',
+                    textColor: '#1A2408',
+                    coverUrl: createCoverDataURL('editorial', '#bef264', '#65a30d', '#365314'),
+                    audioBlob: createSynthAudioBlob(261.63, 1.2),
+                    createdAt: Date.now() - 6000
+                },
+                {
+                    id: `trk_${username}_4`,
+                    owner: username,
+                    title: 'ORANGE SKY DANCE',
+                    artist: 'Sofia Marquez',
+                    folderId: defaultFolders[2].id,
+                    spineColor: '#F4A24C',
+                    textColor: '#18181B',
+                    coverUrl: createCoverDataURL('editorial', '#fb923c', '#ea580c', '#0369a1'),
+                    audioBlob: createSynthAudioBlob(293.66, 1.15),
+                    createdAt: Date.now() - 5000
+                },
+                {
+                    id: `trk_${username}_5`,
+                    owner: username,
+                    title: 'sky study',
+                    artist: 'maría cielo',
+                    folderId: defaultFolders[2].id,
+                    spineColor: '#9CC9E8',
+                    textColor: '#0F172A',
+                    coverUrl: createCoverDataURL('editorial', '#7dd3fc', '#38bdf8', '#1e293b'),
+                    audioBlob: createSynthAudioBlob(329.63, 0.85),
+                    createdAt: Date.now() - 4000
+                },
+                {
+                    id: `trk_${username}_6`,
+                    owner: username,
+                    title: 'Highway Silhouettes',
+                    artist: 'Twilight Drive',
+                    folderId: defaultFolders[2].id,
+                    spineColor: '#634332',
+                    textColor: '#FFFFFF',
+                    coverUrl: createCoverDataURL('editorial', '#78350f', '#451a03', '#1c1917'),
+                    audioBlob: createSynthAudioBlob(174.61, 1.05),
+                    createdAt: Date.now() - 3000
+                },
+                {
+                    id: `trk_${username}_7`,
+                    owner: username,
+                    title: 'veil of light',
+                    artist: 'amara sol',
+                    folderId: defaultFolders[1].id,
+                    spineColor: '#E5E7EB',
+                    textColor: '#111827',
+                    coverUrl: createCoverDataURL('editorial', '#c4b5fd', '#e2e8f0', '#475569'),
+                    audioBlob: createSynthAudioBlob(277.18, 0.95),
+                    createdAt: Date.now() - 2000
+                },
+                {
+                    id: `trk_${username}_8`,
+                    owner: username,
+                    title: 'Monochrome Rooms',
+                    artist: 'Aurelia Duo',
+                    folderId: defaultFolders[1].id,
+                    spineColor: '#FFFFFF',
+                    textColor: '#09090B',
+                    coverUrl: createCoverDataURL('editorial', '#f8fafc', '#64748b', '#0f172a'),
+                    audioBlob: createSynthAudioBlob(207.65, 1.0),
+                    createdAt: Date.now() - 1000
+                }
+            ];
+
+            for (const f of defaultFolders) await dbPutItem('folders', f);
+            for (const t of defaultTracks) await dbPutItem('tracks', t);
+        }
+
+        async function loadUserCollection() {
+            updateAuthUI();
+            let userTracks = await dbGetAllByOwner('tracks', currentUser);
+            let userFolders = await dbGetAllByOwner('folders', currentUser);
+
+            if (userTracks.length === 0 && userFolders.length === 0) {
+                await seedDefaultCollectionForUser(currentUser);
+                userTracks = await dbGetAllByOwner('tracks', currentUser);
+                userFolders = await dbGetAllByOwner('folders', currentUser);
+            }
+
+            userTracks.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+            tracks = userTracks;
+            folders = userFolders;
+
+            updateCountersAndFolderDropdown();
+            renderBookshelf();
+
+            if (tracks.length > 0) {
+                loadTrackIntoTurntable(0, false);
+            }
+        }
+
+        /********************************************************************
+         * 5. REALISTIC BOOKSHELF LIBRARY ENGINE (Folders & Vinyl Sleeves)
+         ********************************************************************/
+        function renderBookshelf() {
+            const container = document.getElementById('bookshelfContainer');
+            if (!container) return;
+
+            let html = '';
+
+            // 1. FOLDERS SHELF TIER (Shown when libraryMode === 'all' or 'folders', and no single folder is locked)
+            if ((libraryMode === 'all' || libraryMode === 'folders') && activeFolderId === 'all') {
+                html += `
+                    <div class="mb-2 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-zinc-300">Полка с папками и плейлистами (${folders.length})</h3>
+                        </div>
+                        <span class="text-[11px] text-zinc-400">Нажмите на папку, чтобы открыть</span>
+                    </div>
+                    <div class="shelf-tier">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5 relative z-20 px-2">
+                            ${folders.map(f => {
+                                const count = tracks.filter(t => t.folderId === f.id).length;
+                                const spineText = getContrastYIQ(f.spineColor || '#5B9BD5');
+                                return `
+                                    <div onclick="openFolderOnShelf('${f.id}')" class="shelf-record-card cursor-pointer group">
+                                        <div class="relative aspect-square rounded-lg overflow-hidden bg-zinc-900 border border-white/15 shadow-2xl flex flex-col justify-between" style="background-image: url('${f.coverUrl || ''}'); background-size: cover; background-position: center;">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20"></div>
+                                            
+                                            <!-- Left Folder Spine Binding Strip -->
+                                            <div class="absolute inset-y-0 left-0 w-3.5 shadow-inner" style="background-color: ${f.spineColor || '#5B9BD5'};"></div>
+
+                                            <!-- Top Folder Tab Badge -->
+                                            <div class="relative z-10 p-2.5 pl-5 flex items-center justify-between">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider shadow" style="background-color: ${f.spineColor || '#5B9BD5'}; color: ${spineText};">
+                                                    📁 ${count} тр.
+                                                </span>
+                                                <button onclick="event.stopPropagation(); deleteFolder('${f.id}')" class="w-6 h-6 rounded-md bg-black/50 hover:bg-red-500/80 text-zinc-300 hover:text-white text-[11px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition" title="Удалить папку">✕</button>
+                                            </div>
+
+                                            <!-- Bottom Folder Spine Label -->
+                                            <div class="relative z-10 p-3 pl-5">
+                                                <div class="font-extrabold text-xs sm:text-sm text-white leading-tight truncate">${escapeHtml(f.title)}</div>
+                                                <div class="text-[11px] text-zinc-300 truncate mt-0.5">${escapeHtml(f.subtitle || 'Плейлист')}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="shelf-plank"></div>
+                    </div>
+                `;
+            }
+
+            // 2. VINYL RECORDS SHELF TIERS (Grouped neatly onto wooden shelf planks)
+            if (libraryMode === 'all' || libraryMode === 'tracks' || activeFolderId !== 'all') {
+                const visibleTracks = activeFolderId === 'all'
+                    ? tracks
+                    : tracks.filter(t => t.folderId === activeFolderId);
+
+                const activeFolderObj = folders.find(f => f.id === activeFolderId);
+                const shelfHeading = activeFolderObj
+                    ? `Папка «${escapeHtml(activeFolderObj.title)}» (${visibleTracks.length})`
+                    : `Полки с виниловыми пластинками (${visibleTracks.length})`;
+
+                html += `
+                    <div class="mb-3 mt-2 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-zinc-300">${shelfHeading}</h3>
+                        </div>
+                        ${activeFolderId !== 'all' ? `
+                            <button onclick="resetFolderFilter()" class="text-xs font-bold text-amber-400 hover:underline flex items-center gap-1">
+                                ← Ко всем полкам
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+
+                if (visibleTracks.length === 0) {
+                    html += `
+                        <div class="shelf-tier">
+                            <div class="py-10 px-4 text-center relative z-20">
+                                <p class="text-sm font-bold text-white">На этой полке пока пусто</p>
+                                <p class="text-xs text-zinc-400 mt-1 mb-4">Загрузите свой MP3-файл, чтобы поставить пластинку на полку</p>
+                                <button onclick="openUploadModal()" class="px-4 py-2 rounded-xl bg-amber-500 text-black font-bold text-xs">+ Добавить MP3 пластинку</button>
+                            </div>
+                            <div class="shelf-plank"></div>
+                        </div>
+                    `;
+                } else {
+                    // Chunk records into shelf rows of 3 items per shelf plank
+                    const itemsPerShelf = 3;
+                    for (let i = 0; i < visibleTracks.length; i += itemsPerShelf) {
+                        const rowItems = visibleTracks.slice(i, i + itemsPerShelf);
+                        html += `
+                            <div class="shelf-tier pt-3">
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5 relative z-20 px-2">
+                                    ${rowItems.map(item => {
+                                        const globalIdx = tracks.findIndex(t => t.id === item.id);
+                                        const isCurrent = globalIdx === currentTrackIndex;
+                                        const spineColor = item.spineColor || '#F59E0B';
+                                        const spineText = getContrastYIQ(spineColor);
+
+                                        return `
+                                            <div onclick="selectTrackFromShelf(${globalIdx})" class="shelf-record-card ${isCurrent ? 'playing-now' : ''} cursor-pointer group">
+                                                <!-- Peeking Vinyl Disc at top of sleeve -->
+                                                <div class="sleeve-vinyl-peek w-[86%] aspect-square rounded-full bg-zinc-950 border border-white/15 mx-auto -mb-[78%] relative z-0 shadow-lg flex items-center justify-center">
+                                                    <div class="w-1/3 h-1/3 rounded-full border border-white/20" style="background-color: ${spineColor};"></div>
+                                                </div>
+
+                                                <!-- Record Sleeve Jacket -->
+                                                <div class="relative z-10 aspect-square rounded-md overflow-hidden bg-zinc-900 shadow-2xl border ${isCurrent ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-white/15'} flex flex-col justify-between" style="background-image: url('${item.coverUrl || ''}'); background-size: cover; background-position: center;">
+                                                    
+                                                    <!-- Top Colored Spine Strip (Like Image 2) -->
+                                                    <div class="px-2.5 py-1.5 flex items-center justify-between gap-1 shadow-md" style="background-color: ${spineColor}; color: ${spineText};">
+                                                        <div class="truncate text-[11px] sm:text-xs leading-tight">
+                                                            <span class="font-extrabold">${escapeHtml(item.title)}</span>
+                                                        </div>
+                                                        ${isCurrent ? `<span class="text-[10px] font-black shrink-0">● PLAY</span>` : ''}
+                                                    </div>
+
+                                                    <!-- Bottom Artist & Delete Action -->
+                                                    <div class="p-2.5 bg-gradient-to-t from-black/90 via-black/55 to-transparent flex items-end justify-between gap-1">
+                                                        <div class="truncate">
+                                                            <div class="text-[11px] sm:text-xs font-semibold text-zinc-200 truncate">${escapeHtml(item.artist)}</div>
+                                                        </div>
+                                                        <button onclick="event.stopPropagation(); deleteTrack('${item.id}')" class="w-6 h-6 rounded-md bg-black/60 hover:bg-red-500 text-zinc-300 hover:text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition shrink-0" title="Удалить пластинку">✕</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                                <div class="shelf-plank"></div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        function openFolderOnShelf(folderId) {
+            activeFolderId = folderId;
+            const folderObj = folders.find(f => f.id === folderId);
+            const filterBar = document.getElementById('activeFolderFilterBar');
+            filterBar.classList.remove('hidden');
+            filterBar.classList.add('flex');
+            document.getElementById('activeFolderTitleText').textContent = folderObj ? folderObj.title : 'Папка';
+            renderBookshelf();
+            showToast(`Открыта полка: ${folderObj ? folderObj.title : 'Папка'}`);
+        }
+
+        function selectTrackFromShelf(globalIdx) {
+            if (globalIdx < 0 || globalIdx >= tracks.length) return;
+            loadTrackIntoTurntable(globalIdx, true);
+            showToast(`Запущена пластинка: ${tracks[globalIdx].title}`);
+            if (window.innerWidth < 1024) {
+                switchMobileView('player');
+            }
+        }
+
+        /********************************************************************
+         * 6. SKEUOMORPHIC TURNTABLE & INTERACTIVE TONEARM ENGINE
+         ********************************************************************/
+        const audioEl = document.getElementById('mainAudio');
+        const vinylDiscEl = document.getElementById('vinylDisc');
+        const tonearmEl = document.getElementById('tonearm');
+
+        const ARM_REST_DEG = 0;
+        const ARM_START_DEG = 16;
+        const ARM_END_DEG = 38;
+        let isDraggingTonearm = false;
+
+        function loadTrackIntoTurntable(index, autoPlay = false) {
+            if (!tracks.length) return;
+            currentTrackIndex = (index + tracks.length) % tracks.length;
+            const track = tracks[currentTrackIndex];
+
+            // Update Typography
+            document.getElementById('playerTrackTitle').textContent = track.title;
+            document.getElementById('playerTrackArtist').textContent = track.artist;
+
+            // Update Turntable Body Theme Color if auto-sync is enabled
+            if (autoDeckColor) {
+                setTurntableColor(track.spineColor || '#F59E0B');
+            }
+
+            // Update Center Vinyl Label Cover
+            const centerArt = document.getElementById('vinylCenterArt');
+            const fallbackLogo = document.getElementById('vinylFallbackLogo');
+            if (track.coverUrl) {
+                centerArt.style.backgroundImage = `url('${track.coverUrl}')`;
+                fallbackLogo.classList.add('hidden');
+            } else {
+                centerArt.style.backgroundImage = 'none';
+                fallbackLogo.classList.remove('hidden');
+            }
+
+            // Prepare Audio Source from IndexedDB Blob
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+                currentObjectUrl = null;
+            }
+
+            if (track.audioBlob instanceof Blob) {
+                currentObjectUrl = URL.createObjectURL(track.audioBlob);
+                audioEl.src = currentObjectUrl;
+            } else if (track.audioUrl) {
+                audioEl.src = track.audioUrl;
+            }
+
+            audioEl.load();
+            document.getElementById('seekSlider').value = 0;
+            updateTimeUI(0, 0);
+
+            if (autoPlay) {
+                playTurntable();
+            } else {
+                pauseTurntable(true);
+            }
+            renderBookshelf();
+        }
+
+        function setTurntableColor(hexColor) {
+            const root = document.documentElement;
+            root.style.setProperty('--player-bg', hexColor);
+            const textContrast = getContrastYIQ(hexColor);
+            root.style.setProperty('--player-text', textContrast);
+            const picker = document.getElementById('customDeckColorPicker');
+            if (picker) picker.value = hexColor;
+        }
+
+        function pickDeckColorFromSettings(hexColor) {
+            autoDeckColor = false;
+            const cb = document.getElementById('autoColorCheckbox');
+            if (cb) cb.checked = false;
+            setTurntableColor(hexColor);
+            showToast('Цвет корпуса обновлен');
+        }
+
+        function toggleAutoDeckColor(checked) {
+            autoDeckColor = checked;
+            if (checked && tracks[currentTrackIndex]) {
+                setTurntableColor(tracks[currentTrackIndex].spineColor || '#F59E0B');
+            }
+        }
+
+        function setRpmSpeed(rpm) {
+            rpmSpeed = rpm;
+            const btn33 = document.getElementById('rpm33Btn');
+            const btn45 = document.getElementById('rpm45Btn');
+            if (rpm === 33) {
+                btn33.className = 'px-2 py-1 rounded-md text-[11px] font-bold bg-amber-500 text-black';
+                btn45.className = 'px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400';
+                audioEl.playbackRate = 1.0;
+            } else {
+                btn45.className = 'px-2 py-1 rounded-md text-[11px] font-bold bg-amber-500 text-black';
+                btn33.className = 'px-2 py-1 rounded-md text-[11px] font-bold text-zinc-400';
+                audioEl.playbackRate = 1.12;
+            }
+            showToast(`Скорость вращения: ${rpm} RPM`);
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            document.getElementById('settingsModal').classList.add('flex');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('settingsModal').classList.remove('flex');
+        }
+
+        function togglePlay() {
+            if (!tracks.length) return;
+            if (isPlaying) {
+                pauseTurntable(false);
+            } else {
+                playTurntable();
+            }
+        }
+
+        function playTurntable() {
+            if (!tracks.length) return;
+            audioEl.play().then(() => {
+                isPlaying = true;
+                document.getElementById('hwPlayLabel').textContent = 'PAUSE';
+                document.getElementById('hwPlayBtn').classList.add('active-pressed');
+                updateTonearmAngleFromProgress();
+                syncCrackleState();
+            }).catch(err => {
+                console.warn('Playback error:', err);
+            });
+        }
+
+        function pauseTurntable(resetArmToRest = false) {
+            audioEl.pause();
+            isPlaying = false;
+            document.getElementById('hwPlayLabel').textContent = 'PLAY';
+            document.getElementById('hwPlayBtn').classList.remove('active-pressed');
+            if (resetArmToRest) {
+                tonearmEl.style.transform = `rotate(${ARM_REST_DEG}deg)`;
+            }
+            syncCrackleState();
+        }
+
+        function prevTrack() {
+            loadTrackIntoTurntable(currentTrackIndex - 1, isPlaying);
+        }
+
+        function nextTrack() {
+            loadTrackIntoTurntable(currentTrackIndex + 1, isPlaying);
+        }
+
+        function changeVolume(val) {
+            audioEl.volume = parseFloat(val);
+        }
+
+        function seekAudio(percent) {
+            if (!audioEl.duration || isNaN(audioEl.duration)) return;
+            audioEl.currentTime = (percent / 100) * audioEl.duration;
+            updateTonearmAngleFromProgress();
+        }
+
+        function updateTonearmAngleFromProgress() {
+            if (isDraggingTonearm) return;
+            if (!isPlaying && audioEl.currentTime === 0) {
+                tonearmEl.style.transform = `rotate(${ARM_REST_DEG}deg)`;
+                return;
+            }
+            const progress = (audioEl.duration && !isNaN(audioEl.duration))
+                ? (audioEl.currentTime / audioEl.duration)
+                : 0;
+            const deg = ARM_START_DEG + progress * (ARM_END_DEG - ARM_START_DEG);
+            tonearmEl.style.transform = `rotate(${deg.toFixed(2)}deg)`;
+        }
+
+        // Smooth 60fps Vinyl Platter Rotation Loop
+        function animateVinylLoop(timestamp) {
+            if (!lastFrameTime) lastFrameTime = timestamp;
+            const dt = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+
+            if (isPlaying) {
+                const speedFactor = rpmSpeed === 45 ? 0.27 : 0.20;
+                vinylRotationDeg = (vinylRotationDeg + dt * speedFactor) % 360;
+                vinylDiscEl.style.transform = `rotate(${vinylRotationDeg.toFixed(2)}deg)`;
+            }
+            requestAnimationFrame(animateVinylLoop);
+        }
+
+        // Interactive Tonearm Dragging
+        function setupTonearmInteraction() {
+            tonearmEl.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                isDraggingTonearm = true;
+                tonearmEl.classList.add('dragging');
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDraggingTonearm) return;
+                const rect = tonearmEl.getBoundingClientRect();
+                const pivotX = rect.left + rect.width * 0.5;
+                const pivotY = rect.top + 52;
+                const dx = pivotX - e.clientX;
+                const dy = e.clientY - pivotY;
+                let angleDeg = Math.atan2(dx, dy) * (180 / Math.PI);
+                angleDeg = Math.max(ARM_REST_DEG, Math.min(ARM_END_DEG, angleDeg));
+                tonearmEl.style.transform = `rotate(${angleDeg.toFixed(2)}deg)`;
+            });
+
+            window.addEventListener('pointerup', () => {
+                if (!isDraggingTonearm) return;
+                isDraggingTonearm = false;
+                tonearmEl.classList.remove('dragging');
+
+                const match = tonearmEl.style.transform.match(/rotate\(([-\d.]+)deg\)/);
+                const currentAngle = match ? parseFloat(match[1]) : 0;
+
+                if (currentAngle < ARM_START_DEG - 4) {
+                    pauseTurntable(true);
+                } else {
+                    const norm = Math.max(0, Math.min(1, (currentAngle - ARM_START_DEG) / (ARM_END_DEG - ARM_START_DEG)));
+                    if (audioEl.duration && !isNaN(audioEl.duration)) {
+                        audioEl.currentTime = norm * audioEl.duration;
+                    }
+                    if (!isPlaying) playTurntable();
+                }
+            });
+        }
+
+        // Audio Time Updates
+        audioEl.addEventListener('timeupdate', () => {
+            if (!audioEl.duration || isNaN(audioEl.duration)) return;
+            const pct = (audioEl.currentTime / audioEl.duration) * 100;
+            document.getElementById('seekSlider').value = pct;
+            updateTimeUI(audioEl.currentTime, audioEl.duration);
+            updateTonearmAngleFromProgress();
+        });
+
+        audioEl.addEventListener('loadedmetadata', () => {
+            updateTimeUI(audioEl.currentTime, audioEl.duration);
+        });
+
+        audioEl.addEventListener('ended', () => {
+            nextTrack();
+        });
+
+        function updateTimeUI(curr, dur) {
+            const fmt = (s) => {
+                if (!s || isNaN(s)) return '0:00';
+                const m = Math.floor(s / 60);
+                const sec = Math.floor(s % 60);
+                return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+            };
+            document.getElementById('playerTimeDisplay').textContent = `${fmt(curr)} / ${fmt(dur)}`;
+        }
+
+        /********************************************************************
+         * 7. WEB AUDIO API VINYL CRACKLE GENERATOR
+         ********************************************************************/
+        function toggleCrackle() {
+            isCrackleEnabled = !isCrackleEnabled;
+            const btn = document.getElementById('crackleToggleBtn');
+            const dot = document.getElementById('settingsCrackleDot');
+            if (isCrackleEnabled) {
+                btn.textContent = 'Вкл';
+                btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-black transition';
+                dot.classList.remove('hidden');
+                showToast('Виниловое потрескивание включено');
+            } else {
+                btn.textContent = 'Выкл';
+                btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-800 text-zinc-300 border border-white/10 transition';
+                dot.classList.add('hidden');
+                showToast('Виниловое потрескивание выключено');
+            }
+            syncCrackleState();
+        }
+
+        function changeCrackleVolume(val) {
+            crackleVolume = parseFloat(val);
+            if (crackleGain && audioCtx && isCrackleEnabled && isPlaying) {
+                crackleGain.gain.setTargetAtTime(crackleVolume, audioCtx.currentTime, 0.05);
+            }
+        }
+
+        function syncCrackleState() {
+            if (isCrackleEnabled && isPlaying) {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const bufferSize = 2 * audioCtx.sampleRate;
+                    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        const r = Math.random();
+                        output[i] = r > 0.9985 ? (Math.random() * 2 - 1) * 0.9 : (Math.random() * 2 - 1) * 0.04;
+                    }
+                    crackleNode = audioCtx.createBufferSource();
+                    crackleNode.buffer = noiseBuffer;
+                    crackleNode.loop = true;
+
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 1900;
+
+                    crackleGain = audioCtx.createGain();
+                    crackleGain.gain.value = crackleVolume;
+
+                    crackleNode.connect(filter);
+                    filter.connect(crackleGain);
+                    crackleGain.connect(audioCtx.destination);
+                    crackleNode.start(0);
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                crackleGain.gain.setTargetAtTime(crackleVolume, audioCtx.currentTime, 0.05);
+            } else if (crackleGain && audioCtx) {
+                crackleGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+            }
+        }
+
+        /********************************************************************
+         * 8. UPLOAD MP3 & CREATE FOLDERS LOGIC
+         ********************************************************************/
+        function openUploadModal() {
+            pendingCoverDataUrl = null;
+            document.getElementById('uploadForm').reset();
+            document.getElementById('mp3FileNameLabel').textContent = 'Нажмите, чтобы выбрать MP3 файл с устройства';
+            document.getElementById('coverPreviewBox').style.backgroundImage = 'none';
+            document.getElementById('coverPreviewBox').innerHTML = '<span class="text-[10px] text-zinc-500 text-center px-1">Лого по умолч.</span>';
+            updateCountersAndFolderDropdown();
+            document.getElementById('uploadModal').classList.remove('hidden');
+            document.getElementById('uploadModal').classList.add('flex');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+            document.getElementById('uploadModal').classList.remove('flex');
+        }
+
+        function onMp3FileSelected(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            document.getElementById('mp3FileNameLabel').textContent = `Выбран: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} МБ)`;
+
+            // Auto-parse Artist - Title from filename if empty
+            const baseName = file.name.replace(/\.[^/.]+$/, '');
+            const titleIn = document.getElementById('inputTrackTitle');
+            const artistIn = document.getElementById('inputTrackArtist');
+            if (!titleIn.value) {
+                if (baseName.includes(' - ')) {
+                    const parts = baseName.split(' - ');
+                    artistIn.value = parts[0].trim();
+                    titleIn.value = parts.slice(1).join(' - ').trim();
+                } else {
+                    titleIn.value = baseName.trim();
+                    if (!artistIn.value) artistIn.value = currentUser;
+                }
+            }
+        }
+
+        function onCoverFileSelected(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                pendingCoverDataUrl = e.target.result;
+                const box = document.getElementById('coverPreviewBox');
+                box.style.backgroundImage = `url('${pendingCoverDataUrl}')`;
+                box.innerHTML = '';
+                extractDominantColor(pendingCoverDataUrl, (hex) => {
+                    document.getElementById('inputSpineColor').value = hex;
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setModalColor(hex) {
+            document.getElementById('inputSpineColor').value = hex;
+        }
+
+        function toggleInlineNewFolder() {
+            const box = document.getElementById('inlineNewFolderBox');
+            box.classList.toggle('hidden');
+        }
+
+        async function createFolderInline() {
+            const nameInput = document.getElementById('inlineNewFolderName');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            const newFolder = {
+                id: 'fld_' + Date.now(),
+                owner: currentUser,
+                title: name,
+                subtitle: currentUser,
+                spineColor: document.getElementById('inputSpineColor').value || '#5B9BD5',
+                coverUrl: pendingCoverDataUrl || createCoverDataURL('editorial', '#3b82f6', '#1d4ed8', '#1e1b4b')
+            };
+            await dbPutItem('folders', newFolder);
+            folders.push(newFolder);
+            updateCountersAndFolderDropdown();
+            document.getElementById('inputTrackFolder').value = newFolder.id;
+            nameInput.value = '';
+            document.getElementById('inlineNewFolderBox').classList.add('hidden');
+            showToast(`Папка «${name}» создана`);
+        }
+
+        async function handleSaveTrack(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('mp3FileInput');
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+                showToast('Пожалуйста, выберите аудиофайл');
+                return;
+            }
+
+            const btn = document.getElementById('saveTrackSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Сохранение...';
+
+            try {
+                const spineColor = document.getElementById('inputSpineColor').value || '#F59E0B';
+                const newTrack = {
+                    id: 'trk_' + Date.now(),
+                    owner: currentUser,
+                    title: document.getElementById('inputTrackTitle').value.trim(),
+                    artist: document.getElementById('inputTrackArtist').value.trim(),
+                    folderId: document.getElementById('inputTrackFolder').value || (folders[0] ? folders[0].id : 'all'),
+                    spineColor: spineColor,
+                    textColor: getContrastYIQ(spineColor),
+                    coverUrl: pendingCoverDataUrl || createLogoFallbackDataUrl(),
+                    audioBlob: file,
+                    createdAt: Date.now()
+                };
+
+                await dbPutItem('tracks', newTrack);
+                tracks.push(newTrack);
+
+                updateCountersAndFolderDropdown();
+                renderBookshelf();
+
+                // Immediately load and play the newly uploaded MP3
+                loadTrackIntoTurntable(tracks.length - 1, true);
+                closeUploadModal();
+                showToast(`Трек «${newTrack.title}» поставлен на полку!`);
+            } catch (err) {
+                console.error(err);
+                showToast('Ошибка при сохранении файла');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Сохранить в коллекцию';
+            }
+        }
+
+        // Standalone Create Folder Modal
+        function openCreateFolderModal() {
+            pendingFolderCoverDataUrl = null;
+            document.getElementById('newFolderNameInput').value = '';
+            document.getElementById('newFolderSubInput').value = '';
+            document.getElementById('folderModal').classList.remove('hidden');
+            document.getElementById('folderModal').classList.add('flex');
+        }
+
+        function closeCreateFolderModal() {
+            document.getElementById('folderModal').classList.add('hidden');
+            document.getElementById('folderModal').classList.remove('flex');
+        }
+
+        function onFolderCoverSelected(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                pendingFolderCoverDataUrl = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function handleCreateFolderSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('newFolderNameInput').value.trim();
+            const sub = document.getElementById('newFolderSubInput').value.trim() || currentUser;
+            const color = document.getElementById('newFolderColorInput').value || '#5B9BD5';
+
+            const folder = {
+                id: 'fld_' + Date.now(),
+                owner: currentUser,
+                title,
+                subtitle: sub,
+                spineColor: color,
+                coverUrl: pendingFolderCoverDataUrl || createCoverDataURL('editorial', color, '#1f2937', '#09090b')
+            };
+
+            await dbPutItem('folders', folder);
+            folders.push(folder);
+            updateCountersAndFolderDropdown();
+            renderBookshelf();
+            closeCreateFolderModal();
+            showToast(`Папка «${title}» добавлена на книжную полку`);
+        }
+
+        /********************************************************************
+         * 9. LIBRARY MODES & DELETION
+         ********************************************************************/
+        function setLibraryMode(mode) {
+            libraryMode = mode;
+            if (mode === 'folders') activeFolderId = 'all';
+            updateLibraryModeButtons();
+            renderBookshelf();
+        }
+
+        function updateLibraryModeButtons() {
+            const btnAll = document.getElementById('libModeAll');
+            const btnFolders = document.getElementById('libModeFolders');
+            const btnTracks = document.getElementById('libModeTracks');
+            const activeClass = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow';
+            const idleClass = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-zinc-300 hover:text-white';
+
+            btnAll.className = libraryMode === 'all' ? activeClass : idleClass;
+            btnFolders.className = libraryMode === 'folders' ? activeClass : idleClass;
+            btnTracks.className = libraryMode === 'tracks' ? activeClass : idleClass;
+        }
+
+        function resetFolderFilter() {
+            activeFolderId = 'all';
+            const filterBar = document.getElementById('activeFolderFilterBar');
+            filterBar.classList.add('hidden');
+            filterBar.classList.remove('flex');
+            renderBookshelf();
+        }
+
+        function updateCountersAndFolderDropdown() {
+            document.getElementById('countTracksBadge').textContent = tracks.length;
+            document.getElementById('countFoldersBadge').textContent = folders.length;
+
+            const select = document.getElementById('inputTrackFolder');
+            if (select) {
+                select.innerHTML = folders.map(f => `<option value="${f.id}">${escapeHtml(f.title)}</option>`).join('');
+            }
+        }
+
+        async function deleteTrack(id) {
+            if (tracks.length <= 1) {
+                showToast('Оставьте хотя бы одну пластинку на полке');
+                return;
+            }
+            await dbDeleteItem('tracks', id);
+            tracks = tracks.filter(t => t.id !== id);
+            if (currentTrackIndex >= tracks.length) currentTrackIndex = 0;
+            updateCountersAndFolderDropdown();
+            renderBookshelf();
+            loadTrackIntoTurntable(currentTrackIndex, false);
+            showToast('Пластинка убрана с полки');
+        }
+
+        async function deleteFolder(id) {
+            await dbDeleteItem('folders', id);
+            folders = folders.filter(f => f.id !== id);
+            if (activeFolderId === id) resetFolderFilter();
+            updateCountersAndFolderDropdown();
+            renderBookshelf();
+            showToast('Папка удалена');
+        }
+
+        /********************************************************************
+         * 10. ACCOUNT / LOCAL AUTHENTICATION SYSTEM
+         ********************************************************************/
+        function openAuthModal() {
+            updateAuthUI();
+            document.getElementById('authModal').classList.remove('hidden');
+            document.getElementById('authModal').classList.add('flex');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+            document.getElementById('authModal').classList.remove('flex');
+        }
+
+        function updateAuthUI() {
+            const initial = (currentUser[0] || 'U').toUpperCase();
+            document.getElementById('headerUserAvatar').textContent = initial;
+            document.getElementById('headerUserName').textContent = currentUser;
+            document.getElementById('authCurrentAvatar').textContent = initial;
+            document.getElementById('authCurrentName').textContent = currentUser;
+
+            const listEl = document.getElementById('savedUsersList');
+            if (listEl) {
+                listEl.innerHTML = savedUsers.map(u => `
+                    <div onclick="switchUserAccount('${escapeHtml(u.username)}')" class="p-2 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-white/10 flex items-center justify-between cursor-pointer transition">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-zinc-800 text-amber-400 font-bold text-xs flex items-center justify-center">${(u.username[0] || 'U').toUpperCase()}</div>
+                            <span class="text-xs font-semibold text-white">${escapeHtml(u.username)}</span>
+                        </div>
+                        ${u.username === currentUser ? '<span class="text-[10px] text-amber-400 font-bold">Выбран</span>' : '<span class="text-[10px] text-zinc-400">Войти →</span>'}
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('authUsernameInput').value.trim();
+            const pin = document.getElementById('authPasswordInput').value.trim();
+            if (!username) return;
+
+            const existing = savedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (existing) {
+                if (existing.pin && existing.pin !== pin) {
+                    showToast('Неверный PIN-код для этого профиля');
+                    return;
+                }
+                currentUser = existing.username;
+            } else {
+                savedUsers.push({ username, pin });
+                localStorage.setItem('vinylflow_users', JSON.stringify(savedUsers));
+                currentUser = username;
+            }
+
+            localStorage.setItem('vinylflow_active_user', currentUser);
+            document.getElementById('authUsernameInput').value = '';
+            document.getElementById('authPasswordInput').value = '';
+            pauseTurntable(true);
+            await loadUserCollection();
+            closeAuthModal();
+            showToast(`Вы вошли как «${currentUser}»`);
+        }
+
+        async function switchUserAccount(username) {
+            currentUser = username;
+            localStorage.setItem('vinylflow_active_user', currentUser);
+            pauseTurntable(true);
+            await loadUserCollection();
+            closeAuthModal();
+            showToast(`Аккаунт переключен: ${currentUser}`);
+        }
+
+        /********************************************************************
+         * 11. RESPONSIVE MOBILE TABS & UTILITIES
+         ********************************************************************/
+        function switchMobileView(view) {
+            const panePlayer = document.getElementById('panePlayer');
+            const paneCrate = document.getElementById('paneCrate');
+            const tabPlayer = document.getElementById('mobTabPlayer');
+            const tabCrate = document.getElementById('mobTabCrate');
+
+            if (view === 'player') {
+                panePlayer.classList.remove('hidden');
+                panePlayer.classList.add('flex');
+                paneCrate.classList.add('hidden');
+                paneCrate.classList.remove('flex');
+
+                tabPlayer.className = 'rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all bg-amber-500 text-black shadow';
+                tabCrate.className = 'rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all text-zinc-400 hover:text-white bg-zinc-900/80';
+            } else {
+                paneCrate.classList.remove('hidden');
+                paneCrate.classList.add('flex');
+                panePlayer.classList.add('hidden');
+                panePlayer.classList.remove('flex');
+
+                tabCrate.className = 'rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all bg-amber-500 text-black shadow';
+                tabPlayer.className = 'rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all text-zinc-400 hover:text-white bg-zinc-900/80';
+                renderBookshelf();
+            }
+        }
+
+        function createLogoFallbackDataUrl() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 500;
+            canvas.height = 500;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(0, 0, 500, 500);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(170, 330, 55, 0, Math.PI * 2);
+            ctx.arc(330, 280, 50, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 36;
+            ctx.strokeStyle = '#e4e4e7';
+            ctx.beginPath();
+            ctx.moveTo(210, 320);
+            ctx.lineTo(210, 160);
+            ctx.lineTo(365, 115);
+            ctx.lineTo(365, 275);
+            ctx.stroke();
+            return canvas.toDataURL('image/png');
+        }
+
+        function extractDominantColor(dataUrl, callback) {
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = 24;
+                c.height = 24;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(img, 0, 0, 24, 24);
+                const data = ctx.getImageData(0, 0, 24, 24).data;
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < data.length; i += 16) {
+                    r += data[i];
+                    g += data[i + 1];
+                    b += data[i + 2];
+                    count++;
+                }
+                r = Math.round(r / count);
+                g = Math.round(g / count);
+                b = Math.round(b / count);
+                const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+                callback(hex);
+            };
+            img.src = dataUrl;
+        }
+
+        function getContrastYIQ(hexcolor) {
+            const hex = (hexcolor || '#F59E0B').replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16) || 245;
+            const g = parseInt(hex.substr(2, 2), 16) || 158;
+            const b = parseInt(hex.substr(4, 2), 16) || 11;
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return (yiq >= 145) ? '#18181B' : '#FFFFFF';
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, s => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[s]));
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const box = document.getElementById('toastBox');
+            document.getElementById('toastMessage').textContent = msg;
+            box.style.opacity = '1';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                box.style.opacity = '0';
+            }, 2600);
+        }
+
+        /********************************************************************
+         * 12. INITIALIZATION ON WINDOW LOAD
+         ********************************************************************/
+        window.onload = async function () {
+            await initDB();
+            setupTonearmInteraction();
+            await loadUserCollection();
+            requestAnimationFrame(animateVinylLoop);
+        };
+    </script>
+</body>
+</html>
