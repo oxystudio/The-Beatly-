@@ -22,10 +22,10 @@ Then paste Project URL and anon key below. Without keys the app runs in local mo
 :root{--c:#a9d9b5;--t:#2a2a2a;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;overscroll-behavior:none}body{position:fixed;inset:0;width:100%;touch-action:pan-y}
-body{background:var(--c);color:var(--t);font:16px -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden;transition:background .6s}
+body{background:var(--c);color:var(--t);font:16px -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;display:flex;flex-direction:column;height:auto;overflow:hidden;transition:background .6s}
 #view.fix{overflow:hidden}
 #view{flex:1;overflow:auto;overflow-x:hidden;overscroll-behavior:none;padding:env(safe-area-inset-top) 18px 12px;-webkit-overflow-scrolling:touch}
-nav{display:flex;justify-content:center;gap:6px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(0,0,0,.12);backdrop-filter:blur(14px)}
+nav{display:flex;justify-content:center;gap:6px;padding:6px 12px calc(6px + env(safe-area-inset-bottom));background:none}
 nav button{flex:1;max-width:160px;border:0;background:none;font:600 12px inherit;color:var(--t);opacity:.55;padding:8px;border-radius:12px}
 nav button.a{opacity:1;background:rgba(0,0,0,.12)}
 button{font-family:inherit;cursor:pointer;color:inherit}
@@ -73,6 +73,12 @@ figcaption{font-size:13px;font-weight:700;margin-top:8px}figcaption small{displa
 .av{width:84px;height:84px;border-radius:50%;background:#222 center/cover;color:#fff;display:grid;place-items:center;font-size:34px;font-weight:800;cursor:pointer}
 .empty{opacity:.7;text-align:center;padding:40px 10px}
 @media(min-width:900px){#view{padding-left:40px;padding-right:40px}.stagew{padding-right:5vw}}
+@media(min-width:700px) and (min-height:700px){.ctl{justify-content:flex-end;gap:14px}}
+@media(min-width:700px) and (min-height:600px) and (orientation:landscape){
+.pl{flex-direction:row;align-items:center;max-width:none;width:100%;padding:2vh 0;gap:2vw}
+.stagew{flex:1.8;align-self:stretch;margin:0;padding-right:4vw}
+.bot{flex:1;min-width:310px;max-width:460px;align-self:center;margin:0;padding:0}
+.ctl{justify-content:flex-start;gap:14px;margin:3vh 0 0}}
 </style></head>
 <body>
 <div id="view"></div>
