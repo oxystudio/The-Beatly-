@@ -111,20 +111,21 @@ const local={name:'local',
  async del(u,id){await io('del',u.id+'/'+id);delete urlCache[id]}};
 const sb=(SUPABASE_URL&&SUPABASE_KEY&&window.supabase)?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
 const cloud=sb&&{name:'cloud',
- async init(){const{data}=await sb.auth.getSession();return data.session?.user||null},
+ async init(){let u=null;try{const{data}=await sb.auth.getSession();u=data.session?.user||null}catch{}if(!u&&navigator.onLine===false)u=JSON.parse(localStorage.bt_cu||'null');return u},
  async up(e,p){const{data,error}=await sb.auth.signUp({email:e,password:p});if(error)throw error;if(!data.session)throw Error('Check your email to confirm, then sign in');return data.user},
  async in(e,p){const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});if(error)throw error;return data.user},
- out:()=>sb.auth.signOut(),
- async load(u){const{data}=await sb.from('library').select('data').eq('user_id',u.id).maybeSingle();return data?.data},
- async save(u,d){await sb.from('library').upsert({user_id:u.id,data:d})},
- async put(u,id,b){const{error}=await sb.storage.from('music').upload(u.id+'/'+id,b,{contentType:b.type||'audio/mpeg'});if(error)throw error},
- async url(u,id){const{data,error}=await sb.storage.from('music').createSignedUrl(u.id+'/'+id,7200);if(error)throw error;return data.signedUrl},
- async del(u,id){await sb.storage.from('music').remove([u.id+'/'+id])}};
+ out:()=>{localStorage.removeItem('bt_cu');return sb.auth.signOut()},
+ async load(u){const ck='bt_c_'+u.id;if(localStorage['bt_d_'+u.id]&&localStorage[ck])return JSON.parse(localStorage[ck]);try{const{data,error}=await sb.from('library').select('data').eq('user_id',u.id).maybeSingle();if(error)throw error;if(data?.data)localStorage[ck]=JSON.stringify(data.data);return data?.data}catch(e){if(localStorage[ck])return JSON.parse(localStorage[ck]);throw e}},
+ async save(u,d){localStorage['bt_c_'+u.id]=JSON.stringify(d);try{const{error}=await sb.from('library').upsert({user_id:u.id,data:d});if(error)throw error;delete localStorage['bt_d_'+u.id]}catch(e){localStorage['bt_d_'+u.id]=1;throw e}},
+ async put(u,id,b){const{error}=await sb.storage.from('music').upload(u.id+'/'+id,b,{contentType:b.type||'audio/mpeg'});if(error)throw error;try{await io('put',u.id+'/'+id,b)}catch{}},
+ async url(u,id){const k=u.id+'/'+id;if(urlCache[id])return urlCache[id];let b=null;try{b=await io('get',k)}catch{}if(b)return urlCache[id]=URL.createObjectURL(b);const{data,error}=await sb.storage.from('music').createSignedUrl(k,7200);if(error)throw error;fetch(data.signedUrl).then(r=>r.ok?r.blob():null).then(bl=>bl&&io('put',k,bl)).catch(()=>{});return data.signedUrl},
+ async cache(u,id){const k=u.id+'/'+id;if(await io('get',k))return;const{data,error}=await sb.storage.from('music').createSignedUrl(k,7200);if(error)throw error;const r=await fetch(data.signedUrl);if(!r.ok)throw Error('download failed');await io('put',k,await r.blob())},
+ async del(u,id){await sb.storage.from('music').remove([u.id+'/'+id]);try{await io('del',u.id+'/'+id)}catch{}delete urlCache[id]}};
 const B=cloud||local;
 /* ---------- state ---------- */
 let want=0,U,L,tab='player',sub='albums',openA=null,q=[],qi=-1,favOnly=false,term='',last=0,saveT;
 const cur=()=>q[qi];
-const persist=()=>{clearTimeout(saveT);saveT=setTimeout(()=>B.save(U,L).catch(()=>toast('Sync failed')),500)};
+const persist=()=>{clearTimeout(saveT);saveT=setTimeout(()=>B.save(U,L).catch(()=>{if(navigator.onLine)toast('Sync failed')}),500)};
 function theme(){const s=cur(),c=L.p.auto&&s?.color?s.color:L.p.color,x=document.createElement('canvas').getContext('2d');x.fillStyle='#a9d9b5';x.fillStyle=c;const hx=x.fillStyle,n=parseInt(hx.slice(1),16),l=.299*(n>>16)+.587*(n>>8&255)+.114*(n&255),R=document.documentElement;R.style.setProperty('--c',hx);R.style.setProperty('--t',l<110?'#f5f5f5':'#2a2a2a');R.style.background=hx;document.querySelectorAll('meta[name=theme-color]').forEach(m=>m.remove());document.head.append(Object.assign(document.createElement('meta'),{name:'theme-color',content:hx}))}
 /* ---------- id3 + images ---------- */
 const txt=d=>{const e=d[0];return new TextDecoder(e==1?'utf-16':e==3?'utf-8':'iso-8859-1').decode(d.slice(1)).replace(/\0/g,'').trim()};
@@ -141,7 +142,7 @@ let AC,M,cr;const pre={};
 function ctx(){if(AC)return AC.state=='suspended'&&AC.resume();AC=new(window.AudioContext||webkitAudioContext)();M=AC.createGain();M.gain.value=1;M.connect(AC.destination);}
 function crackle(on){if(!L||!L.p.crackle)on=false;if(on&&AC){if(cr)return;const n=AC.sampleRate*3,bf=AC.createBuffer(1,n,AC.sampleRate),d=bf.getChannelData(0);for(let i=0;i<n;i++){d[i]=(Math.random()-.5)*.012;if(Math.random()<.0004)d[i]+=(Math.random()-.5)*(Math.random()<.1?1.2:.45)}cr=AC.createBufferSource();cr.buffer=bf;cr.loop=true;const g=AC.createGain();g.gain.value=.4;cr.connect(g).connect(M);cr.start()}else if(cr){try{cr.stop()}catch{}cr=null}}
 function setOn(b){$('#bd')?.classList.toggle('on',b);$('#arm')?.classList.toggle('on',b);const p=$('#pb');if(p)p.textContent=b?'PAUSE':'PLAY';crackle(b)}
-async function play(list,i){q=list;qi=i;const s=q[i];try{a.src=pre[s.id]||await B.url(U,s.id);delete pre[s.id]}catch{return toast('Could not load file')}ctx();s.plays=(s.plays||0)+1;persist();theme();if(tab=='player')render();await a.play().catch(()=>{});const nx=q[(qi+1)%q.length];if(nx&&nx!==s&&!pre[nx.id])B.url(U,nx.id).then(u=>pre[nx.id]=u).catch(()=>{});if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,artwork:s.cover?[{src:s.cover,sizes:'320x320',type:'image/jpeg'}]:[]});navigator.mediaSession.setActionHandler('nexttrack',next);navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('play',()=>a.play());navigator.mediaSession.setActionHandler('pause',()=>{want=0;a.pause()});navigator.mediaSession.setActionHandler('seekto',e=>{a.currentTime=e.seekTime})}}
+async function play(list,i){q=list;qi=i;const s=q[i];try{a.src=pre[s.id]||await B.url(U,s.id);delete pre[s.id]}catch{return toast(navigator.onLine?'Could not load file':'Not saved for offline. Connect once to download it.')}ctx();s.plays=(s.plays||0)+1;persist();theme();if(tab=='player')render();await a.play().catch(()=>{});const nx=q[(qi+1)%q.length];if(nx&&nx!==s&&!pre[nx.id])B.url(U,nx.id).then(u=>pre[nx.id]=u).catch(()=>{});if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,artwork:s.cover?[{src:s.cover,sizes:'320x320',type:'image/jpeg'}]:[]});navigator.mediaSession.setActionHandler('nexttrack',next);navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('play',()=>a.play());navigator.mediaSession.setActionHandler('pause',()=>{want=0;a.pause()});navigator.mediaSession.setActionHandler('seekto',e=>{a.currentTime=e.seekTime})}}
 const next=()=>q.length&&play(q,(qi+1)%q.length);
 const prev=()=>q.length&&(a.currentTime>3?a.currentTime=0:play(q,(qi-1+q.length)%q.length));
 function toggle(){if(!cur()){if(L.songs.length)return play(L.songs,0);return go('lib')}ctx();if(a.paused)a.play();else{want=0;a.pause()}}
@@ -157,6 +158,7 @@ g.addEventListener('pointermove',e=>{if(!on)return;const t=Math.max(-26,Math.min
 const end=()=>{if(!on)return;on=0;arm.style.transition='';arm.style.transform='';arm.classList.toggle('on',!a.paused)};
 g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end);g.addEventListener('touchmove',e=>e.preventDefault(),{passive:false})}
 async function setCover(al){const f=(await pick('image/*'))[0];if(f){al.cover=(await img(f)).url;persist();render()}}
+async function saveOffline(){let n=0;const t=L.songs.length;for(const s of L.songs){toast('Saving '+(++n)+'/'+t+'…');try{await B.cache(U,s.id)}catch(e){return toast('Failed: '+s.title+' ('+(e.message||e)+')')}}toast('Library saved for offline ✓')}
 function ask(title,fields,ok='Save'){return new Promise(r=>{const ins=fields.map(([l,v])=>h('input',{class:'in',value:v||''}));const m=h('div',{class:'mod',onclick:e=>{if(e.target==m){m.remove();r(null)}}},h('div',{class:'sheet'},h('b',{},title),fields.flatMap(([l],i)=>[h('small',{style:'opacity:.6'},l),ins[i]]),h('button',{style:'background:#222;color:#fff;text-align:center',onclick:()=>{m.remove();r(ins.map(i=>i.value.trim()))}},ok),h('button',{style:'text-align:center',onclick:()=>{m.remove();r(null)}},'Skip')));document.body.append(m);ins[0]?.focus()})}
 const jsonp=u=>new Promise((res,rej)=>{const cb='jp'+uid(),sc=document.createElement('script'),t=setTimeout(()=>{done();rej(Error('timeout'))},9000),done=()=>{clearTimeout(t);delete window[cb];sc.remove()};window[cb]=d=>{done();res(d)};sc.onerror=()=>{done();rej(Error('network'))};sc.src=u+'&callback='+cb;document.head.append(sc)});
 const nf=()=>'Cover not found'+(window._ce?' ('+window._ce.trim()+')':'');
@@ -203,15 +205,69 @@ const sw=(k,t)=>h('label',{},t,h('input',{type:'checkbox',checked:p[k]?'':null,o
 V.append(h('div',{style:'max-width:520px;margin:0 auto;padding-top:20px'},h('div',{class:'card',style:'display:flex;gap:16px;align-items:center'},h('div',{class:'av',style:bg(p.av),onclick:async()=>{const f=(await pick('image/*'))[0];if(f){p.av=(await img(f)).url;persist();render()}}},p.av?'':(p.name||'?')[0].toUpperCase()),
 h('div',{style:'flex:1'},h('input',{class:'in',value:p.name,onchange:e=>{p.name=e.target.value;persist()}}),h('small',{},U.email+(B.name=='local'?' · local mode (this device only)':' · synced')))),
 h('div',{class:'card'},h('label',{},'Songs',h('b',{},L.songs.length)),h('label',{},'Albums',h('b',{},L.albums.length)),h('label',{},'Plays',h('b',{},tot)),h('label',{},'Listening time',h('b',{},Math.round((p.secs||0)/60)+' min'))),
-h('div',{class:'card'},sw('crackle','Vinyl crackle'),sw('auto','Match color to cover'),h('label',{},'Custom color',h('input',{type:'color',value:p.color,onchange:e=>{p.color=e.target.value;persist();theme()}}))),
+B.cache?h('div',{class:'card'},h('small',{},'Download every song to this device to play without internet (airplane mode).'),h('button',{class:'pill',style:'margin-top:10px;width:100%',onclick:saveOffline},'Save library for offline')):null,h('div',{class:'card'},sw('crackle','Vinyl crackle'),sw('snow','New Year mode'),sw('auto','Match color to cover'),[h('label',{},'Custom color',h('input',{type:'color',value:p.color,onchange:e=>{p.color=e.target.value;persist();theme()}})),(window.snowTilt&&window.snowTilt.need&&!window.snowTilt.on)?h('button',{class:'pill sm',style:'margin-top:8px',onclick:async()=>{const r=await window.snowTilt.ask();toast(r=='granted'?'Tilt enabled':'Motion access denied. Allow it for this site in iOS settings');render()}},'Enable tilt for snow'):null]),
 ('standalone' in navigator&&!navigator.standalone)?h('div',{class:'card'},'Tip: to remove the browser bar completely, tap Share → Add to Home Screen, then open The Beatly from its icon.'):null,h('button',{class:'pill',style:'width:100%',onclick:async()=>{a.pause();q=[];qi=-1;await B.out();U=L=null;$('#nav').hidden=true;document.documentElement.style.setProperty('--c','#a9d9b5');auth()}},'Sign out')))}
 /* ---------- auth + boot ---------- */
 function auth(){V.innerHTML='';let up=false;const draw=()=>{V.innerHTML='';const n=h('input',{class:'in',placeholder:'Your name',hidden:up?null:''}),e=h('input',{class:'in',type:'email',placeholder:'Email',autocomplete:'email'}),p=h('input',{class:'in',type:'password',placeholder:'Password (min 6)',autocomplete:up?'new-password':'current-password'});
 const go2=async()=>{try{if(p.value.length<6)throw Error('Password must be at least 6 characters');U=await(up?B.up:B.in)(e.value.trim().toLowerCase(),p.value);await enter(up&&n.value.trim())}catch(x){toast(x.message||'Error')}};
 V.append(h('div',{class:'auth'},h('img',{src:LOGO_SRC,alt:''}),h('h1',{},'The Beatly'),n,e,p,h('button',{class:'pill',style:'width:100%;margin-top:10px',onclick:go2},up?'Create account':'Sign in'),h('p',{},up?'Have an account? ':'New here? ',h('a',{href:'#',style:'color:inherit;font-weight:700',onclick:ev=>{ev.preventDefault();up=!up;draw()}},up?'Sign in':'Create account')),h('small',{style:'opacity:.7'},B.name=='local'?'Local mode: accounts live on this device. Add Supabase keys to sync across devices.':'')))};draw()}
-async function enter(name){L=(await B.load(U))||{};L.songs??=[];L.albums??=[];L.p??={};if(L.p.color=='#f2a9'+'3b')L.p.color='#a9d9b5';Object.entries({name:name||U.email.split('@')[0],color:'#a9d9b5',auto:1,crackle:1,secs:0,vol:.8}).forEach(([k,v])=>L.p[k]??=v);
+async function enter(name){if(B.name=='cloud')localStorage.bt_cu=JSON.stringify({id:U.id,email:U.email});try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch{}L=(await B.load(U))||{};L.songs??=[];L.albums??=[];L.p??={};if(L.p.color=='#f2a9'+'3b')L.p.color='#a9d9b5';Object.entries({name:name||U.email.split('@')[0],color:'#a9d9b5',auto:1,crackle:1,secs:0,vol:.8,snow:1}).forEach(([k,v])=>L.p[k]??=v);
 const nav=$('#nav');nav.hidden=false;nav.innerHTML='';[['player','Player'],['lib','Library'],['me','Profile']].forEach(([t,l])=>nav.append(h('button',{'data-t':t,onclick:()=>go(t)},l)));tab='player';render()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&L){if(AC&&AC.state!='running')AC.resume().catch(()=>{});setOn(!a.paused)}});
 addEventListener('resize',()=>{clearTimeout(window._r);window._r=setTimeout(()=>L&&tab=='lib'&&!openA&&sub=='albums'&&render(),200)});
+
+/* ---------- snow ---------- */
+(()=>{if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+const cv=document.createElement('canvas');cv.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:5';document.body.append(cv);
+const x=cv.getContext('2d'),S=3,R=(a,b)=>a+Math.random()*(b-a),rad=Math.PI/180;
+let W=0,H=0,D=1,F=[],P=[],hs=[],cap=[],last=0,tilt=0,tS=0,had=0;
+const SP=[];(()=>{for(let v=0;v<5;v++){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.translate(32,32);g.strokeStyle='#fff';g.fillStyle='#fff';g.lineCap='round';g.lineWidth=7;
+for(let k=0;k<6;k++){g.save();g.rotate(k*Math.PI/3);g.beginPath();g.moveTo(0,0);g.lineTo(0,-28);
+if(v==1||v==3){g.moveTo(0,-14);g.lineTo(-8,-23);g.moveTo(0,-14);g.lineTo(8,-23)}
+if(v==2){g.moveTo(0,-21);g.lineTo(-6,-28);g.moveTo(0,-21);g.lineTo(6,-28)}
+if(v==4){g.moveTo(0,-10);g.lineTo(-6,-17);g.moveTo(0,-10);g.lineTo(6,-17);g.moveTo(0,-20);g.lineTo(-5,-27);g.moveTo(0,-20);g.lineTo(5,-27)}
+g.stroke();g.restore()}
+if(v==3||v==0){g.beginPath();g.arc(0,0,7,0,6.3);g.fill()}SP.push(c)}})();
+const mk=i=>{const z=Math.random()**1.4;return{x:R(0,W),y:i?R(-H,0):R(-12,-2),z,r:.7+z*1.5,h:1.3+z*2.6,v:Math.floor(R(0,5)),rot:R(0,6.28),spin:R(-.8,.8),vy:20+z*52,a:.55+z*.45,sw:5+z*11,fq:R(.5,1.4),ph:R(0,6.28)}};
+function newCap(){const n=hs.length,ps=[R(0,6.3),R(0,6.3),R(0,6.3),R(0,6.3)],fs=[R(.02,.05),R(.06,.12),R(.15,.3),R(.4,.8)],am=[1,.7,.45,.25],tt=2.4;cap=Array.from({length:n},(_,i)=>{let v=0;for(let k=0;k<4;k++)v+=am[k]*Math.sin(i*fs[k]+ps[k]);return .65+((v/tt+1)/2)*.8+R(-.04,.04)})}
+function size(){D=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*D;cv.height=H*D;const n=Math.ceil(W/S)+2,o=hs;hs=Array.from({length:n},(_,i)=>o[i]||0);newCap();const w=Math.round(W/4.5);while(F.length<w)F.push(mk(1));F.length=w}
+const on=()=>!(typeof L!=='undefined'&&L&&L.p&&L.p.snow===0);
+function settle(c,r){const inc=Math.PI*r*r*1.8/S;let tw=0;const ws=[];for(let k=-3;k<=3;k++){const w=Math.exp(-k*k/3);ws.push(w);tw+=w}ws.forEach((w,j)=>{const i=c+j-3;if(i>=0&&i<hs.length)hs[i]=Math.min(H,hs[i]+inc*w/tw*cap[i])})}
+function step(dt,t){tS+=(tilt-tS)*Math.min(1,dt*3);const te=Math.abs(tS)<.1?0:Math.sign(tS)*(Math.abs(tS)-.1)/.9,wind=Math.sin(t*.15)*10+Math.sin(t*.37)*5+te*60;
+for(const f of F){f.y+=f.vy*dt;f.rot+=f.spin*dt;f.x+=(Math.sin(t*f.fq+f.ph)*f.sw*.6+wind*(.4+f.z))*dt;if(f.x<-6)f.x=W+6;else if(f.x>W+6)f.x=-6;
+const c=Math.max(0,Math.min(hs.length-1,Math.round(f.x/S)));if(f.y+f.r>=H-hs[c]){if(f.y>0)settle(c,f.r);Object.assign(f,mk(0))}else if(f.y>H+5)Object.assign(f,mk(0))}
+const n=hs.length;
+if(te){const r=Math.min(.45,22*Math.abs(te)*dt);if(te>0){for(let i=n-2;i>=0;i--){const m=hs[i]*r;hs[i]-=m;hs[i+1]+=m}}else{for(let i=1;i<n;i++){const m=hs[i]*r;hs[i]-=m;hs[i-1]+=m}}for(let i=0;i<n;i++)if(hs[i]>H)hs[i]=H}
+for(let i=0;i<n-1;i++){const d=hs[i]-hs[i+1],a=Math.abs(d);if(a>2.2){const m=(a-2.2)*.2*Math.sign(d);hs[i]-=m;hs[i+1]+=m}}
+let mx=0;for(const v of hs)if(v>mx)mx=v;if(mx>3)had=1;else if(had&&mx<.4){had=0;newCap()}
+for(let i=P.length-1;i>=0;i--){const p=P[i];p.vx*=.992;p.vy+=330*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt*.9;if(p.l<=0||p.y>H+4)P.splice(i,1)}}
+function draw(){x.setTransform(D,0,0,D,0,0);x.globalAlpha=1;x.clearRect(0,0,W,H);
+let mx=0;for(const v of hs)if(v>mx)mx=v;
+if(mx>.4){const g=x.createLinearGradient(0,H-mx,0,H);g.addColorStop(0,'rgba(255,255,255,.97)');g.addColorStop(1,'rgba(214,226,238,.98)');x.fillStyle=g;x.beginPath();x.moveTo(0,H+2);x.lineTo(0,H-hs[0]);for(let i=1;i<hs.length-1;i++){const a=hs[i],b=hs[i+1];x.quadraticCurveTo(i*S,H-a,(i+.5)*S,H-(a+b)/2)}x.lineTo(W,H-hs[hs.length-1]);x.lineTo(W,H+2);x.closePath();x.fill()}
+for(const f of F){const c=Math.cos(f.rot)*D,s=Math.sin(f.rot)*D;x.setTransform(c,s,-s,c,f.x*D,f.y*D);x.globalAlpha=f.a;x.drawImage(SP[f.v],-f.h,-f.h,2*f.h,2*f.h)}
+x.setTransform(D,0,0,D,0,0);
+for(const p of P){x.globalAlpha=Math.min(1,p.l)*.9;x.fillStyle='#fff';x.beginPath();x.arc(p.x,p.y,p.r,0,6.283);x.fill()}x.globalAlpha=1}
+function brush(px,py,vx){for(let i=0;i<hs.length;i++){const dx=Math.abs(i*S-px),rr=34+Math.min(80,hs[i]/6);if(dx>=rr||hs[i]<.3||py<H-hs[i]-30)continue;const rem=hs[i]*Math.min(1,(1-dx/rr)*1.5);hs[i]-=rem;const n=Math.min(6,Math.ceil(rem/2.5));for(let k=0;k<n&&P.length<350;k++)P.push({x:i*S+R(-1.5,1.5),y:H-hs[i]-R(0,rem),vx:Math.max(-260,Math.min(260,vx*.3))+R(-35,35),vy:-R(25,150),r:R(.6,1.6),l:R(.7,1.2)})}}
+let lx=null,ly=0,lt=0;
+const mv=e=>{const t=e.touches?e.touches[0]:e;if(!t)return;const now=performance.now(),dt=Math.max(8,now-lt);if(lx!==null&&now-lt<150){const dx=t.clientX-lx,dy=t.clientY-ly,n=Math.max(1,Math.ceil(Math.abs(dx)/10)),vx=dx/dt*1000;for(let k=1;k<=n;k++)brush(lx+dx*k/n,ly+dy*k/n,vx)}lx=t.clientX;ly=t.clientY;lt=now};
+addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&!e.buttons)return;mv(e)},{passive:true});
+addEventListener('touchmove',mv,{passive:true});
+const up=()=>{lx=null};addEventListener('pointerup',up);addEventListener('touchend',up);addEventListener('pointercancel',up);
+addEventListener('resize',size);
+/* tilt: snow slides toward the lower side of the screen */
+const ME=typeof DeviceMotionEvent!=='undefined'?DeviceMotionEvent:null,OE=typeof DeviceOrientationEvent!=='undefined'?DeviceOrientationEvent:null,PE=ME&&typeof ME.requestPermission==='function'?ME:(OE&&typeof OE.requestPermission==='function'?OE:null);
+let sinB=0,vote=0,tiltOn=0;
+const ang=()=>(typeof window.orientation==='number'?window.orientation:(screen.orientation?screen.orientation.angle:0))*rad;
+const ori=e=>{if(e.beta!=null)sinB=Math.sin(e.beta*rad)};
+const mot=e=>{const g=e.accelerationIncludingGravity;if(!g||g.x==null||g.y==null)return;const n=Math.hypot(g.x,g.y,g.z||0)||1;if(Math.abs(sinB)>.6&&Math.abs(g.y)>4)vote=Math.max(-40,Math.min(40,vote+Math.sign(-sinB*g.y)));const ios=Math.abs(vote)>6?vote>0:!!PE,k=ios?1:-1,gx=k*g.x/n,gy=k*g.y/n,t=ang();tilt=Math.max(-1,Math.min(1,gx*Math.cos(t)-gy*Math.sin(t)))};
+const startTilt=()=>{if(tiltOn)return;tiltOn=1;addEventListener('devicemotion',mot,true);addEventListener('deviceorientation',ori,true)};
+const askTilt=()=>{if(!PE){startTilt();return Promise.resolve('granted')}return PE.requestPermission().then(r=>{if(r==='granted')startTilt();return r}).catch(()=>'denied')};
+if(PE){const first=()=>{removeEventListener('click',first,true);removeEventListener('touchend',first,true);if(on())askTilt()};addEventListener('click',first,true);addEventListener('touchend',first,true)}else startTilt();
+window.snowTilt={need:!!PE,ask:askTilt,get on(){return tiltOn}};
+size();
+function loop(ts){requestAnimationFrame(loop);if(!on()){cv.style.display='none';last=ts;return}cv.style.display='';const dt=Math.min(.05,(ts-last)/1000||.016);last=ts;step(dt,ts/1000);draw()}
+requestAnimationFrame(loop)})();
+addEventListener('online',()=>{if(U&&L&&B.name=='cloud'&&localStorage['bt_d_'+U.id])B.save(U,L).catch(()=>{})});
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 (async()=>{try{U=await B.init()}catch{U=null}U?enter():auth()})();
 </script></body></html>
