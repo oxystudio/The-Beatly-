@@ -240,7 +240,7 @@ function settle(p,c,r){const inc=Math.PI*r*r*2.2/p.w;let tw=0;const ws=[];for(le
 function step(dt,t){tS+=(tilt-tS)*Math.min(1,dt*3);const te=Math.abs(tS)<.08?0:Math.sign(tS)*(Math.abs(tS)-.08)/.92,wind=Math.sin(t*.15)*10+Math.sin(t*.37)*5+te*60;
 for(const f of F){f.y+=f.vy*dt;f.rot+=f.spin*dt;f.x+=(Math.sin(t*f.fq+f.ph)*f.sw*.6+wind*(.4+f.z))*dt;if(f.x<-6)f.x=W+6;else if(f.x>W+6)f.x=-6;
 let hit=false;for(const p of PL){if(f.x>=p.x0&&f.x<=p.x1){const i=Math.min(p.n-1,Math.floor((f.x-p.x0)/p.w));if(!p.steep[i]&&f.y<p.top+14&&f.y+f.r>=p.base[i]-p.hs[i]){if(f.y>0)settle(p,i,f.r);hit=true}break}}
-let fd=Math.min(1,(H-f.y)/110);if(PL.length&&f.y>PT+25)fd=Math.min(fd,Math.max(0,1-(f.y-PT-25)/70));f.fd=fd;
+let fd=Math.min(1,Math.max(0,(H-f.y)/130));fd=fd*fd*(3-2*fd);if(PL.length&&H-PT<260&&f.y>PT+25)fd=Math.min(fd,Math.max(0,1-(f.y-PT-25)/70));f.fd=fd;
 if(hit||f.y>H+5||(fd<.01&&f.y>0))Object.assign(f,mk(0))}
 const big=Math.abs(tS)>.42;
 for(const p of PL){const n=p.n,h=p.hs;
