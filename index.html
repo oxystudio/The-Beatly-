@@ -263,7 +263,7 @@ const mv=e=>{const t=e.touches?e.touches[0]:e;if(!t)return;const now=performance
 addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&!e.buttons)return;mv(e)},{passive:true});
 addEventListener('touchmove',mv,{passive:true});
 const up=()=>{lx=null};addEventListener('pointerup',up);addEventListener('touchend',up);addEventListener('pointercancel',up);
-addEventListener('resize',size);
+addEventListener('resize',size);if(window.visualViewport)visualViewport.addEventListener('resize',size);
 /* tilt: snow slides toward the lower side of the screen */
 const ME=typeof DeviceMotionEvent!=='undefined'?DeviceMotionEvent:null,OE=typeof DeviceOrientationEvent!=='undefined'?DeviceOrientationEvent:null,PE=ME&&typeof ME.requestPermission==='function'?ME:(OE&&typeof OE.requestPermission==='function'?OE:null);
 let sinB=0,vote=0,tiltOn=0;
@@ -275,7 +275,7 @@ const askTilt=()=>{if(!PE){startTilt();return Promise.resolve('granted')}return 
 if(PE){const first=()=>{removeEventListener('click',first,true);removeEventListener('touchend',first,true);if(on())askTilt()};addEventListener('click',first,true);addEventListener('touchend',first,true)}else startTilt();
 window.snowTilt={need:!!PE,ask:askTilt,get on(){return tiltOn}};
 size();
-function loop(ts){requestAnimationFrame(loop);if(!on()){cv.style.display='none';last=ts;return}cv.style.display='';const dt=Math.min(.05,(ts-last)/1000||.016);last=ts;if(fc++%10==0)measure();step(dt,ts/1000);draw()}
+function loop(ts){requestAnimationFrame(loop);if(!on()){cv.style.display='none';last=ts;return}cv.style.display='';const dt=Math.min(.05,(ts-last)/1000||.016);last=ts;if(cv.clientWidth!==W||cv.clientHeight!==H)size();if(fc++%10==0)measure();step(dt,ts/1000);draw()}
 requestAnimationFrame(loop)})();
 addEventListener('online',()=>{if(U&&L&&B.name=='cloud'&&localStorage['bt_d_'+U.id])B.save(U,L).catch(()=>{})});
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
