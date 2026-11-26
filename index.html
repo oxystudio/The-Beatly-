@@ -17,7 +17,8 @@ create policy ownfiles on storage.objects for all
 
 Then paste Project URL and anon key below. Without keys the app runs in local mode (this device only).
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://beatly.kfd0309.workers.dev/__lib/supabase.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <style>
 :root{--c:#a9d9b5;--t:#2a2a2a;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -219,7 +220,7 @@ B.cache?h('div',{class:'card'},h('small',{},'Download every song to this device 
 /* ---------- auth + boot ---------- */
 function auth(){V.innerHTML='';let up=false;const draw=()=>{V.innerHTML='';const n=h('input',{class:'in',placeholder:'Your name',hidden:up?null:''}),e=h('input',{class:'in',type:'email',placeholder:'Email',autocomplete:'email'}),p=h('input',{class:'in',type:'password',placeholder:'Password (min 6)',autocomplete:up?'new-password':'current-password'});
 const go2=async()=>{try{if(p.value.length<6)throw Error('Password must be at least 6 characters');U=await(up?B.up:B.in)(e.value.trim().toLowerCase(),p.value);await enter(up&&n.value.trim())}catch(x){toast(x.message||'Error')}};
-V.append(h('div',{class:'auth'},h('img',{src:LOGO_SRC,alt:''}),h('h1',{},'The Beatly'),n,e,p,h('button',{class:'pill',style:'width:100%;margin-top:10px',onclick:go2},up?'Create account':'Sign in'),h('p',{},up?'Have an account? ':'New here? ',h('a',{href:'#',style:'color:inherit;font-weight:700',onclick:ev=>{ev.preventDefault();up=!up;draw()}},up?'Sign in':'Create account')),h('small',{style:'opacity:.7'},B.name=='local'?'Local mode: accounts live on this device. Add Supabase keys to sync across devices.':'')))};draw()}
+V.append(h('div',{class:'auth'},h('img',{src:LOGO_SRC,alt:''}),h('h1',{},'The Beatly'),n,e,p,h('button',{class:'pill',style:'width:100%;margin-top:10px',onclick:go2},up?'Create account':'Sign in'),h('p',{},up?'Have an account? ':'New here? ',h('a',{href:'#',style:'color:inherit;font-weight:700',onclick:ev=>{ev.preventDefault();up=!up;draw()}},up?'Sign in':'Create account')),h('small',{style:'opacity:.7'},B.name=='local'?(SUPABASE_URL?'Cloud library did not load (network blocked?). Running in local mode.':'Local mode: accounts live on this device. Add Supabase keys to sync across devices.'):'')))};draw()}
 async function enter(name){if(B.name=='cloud')localStorage.bt_cu=JSON.stringify({id:U.id,email:U.email});try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch{}L=(await B.load(U))||{};L.songs??=[];L.albums??=[];L.p??={};if(L.p.color=='#f2a9'+'3b')L.p.color='#a9d9b5';Object.entries({name:name||U.email.split('@')[0],color:'#a9d9b5',auto:1,crackle:1,secs:0,vol:.8,snow:1}).forEach(([k,v])=>L.p[k]??=v);
 const nav=$('#nav');nav.hidden=false;nav.innerHTML='';[['player','Player'],['lib','Library'],['me','Profile']].forEach(([t,l])=>nav.append(h('button',{'data-t':t,onclick:()=>go(t)},l)));tab='player';render()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&L){if(AC&&AC.state!='running')AC.resume().catch(()=>{});setOn(!a.paused)}});
